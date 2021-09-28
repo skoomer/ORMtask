@@ -1,0 +1,9 @@
+pagila-data.sql
+pagila-insert-data.sql
+pagila-schema.sql
+note.txt
+.env
+myvenv
+.pytest_cache
+poetry.lock
+__pycache__
