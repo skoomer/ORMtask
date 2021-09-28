@@ -52,6 +52,14 @@ class BooleanField(Field):
             raise TypeError('need a bool')
 
 
+class OneToOneField(Field):
+    def __init__(self, rel_class, name=None):
+        super(OneToOneField, self).__init__(
+            name, primary_key=False, default=0, column_type=None
+        )
+        self.rel_class = rel_class
+
+
 class ForeignKey(Field):
     def __init__(self, model_class, name=None):
         self.column_type = "foreignkey"
