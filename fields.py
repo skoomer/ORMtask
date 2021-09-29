@@ -14,23 +14,60 @@ class Field(object):
 
 class VarcharField(Field):
     def __init__(
-        self, name=None, primary_key=False, default=None, ddl="varchar(100)", max_len=4
+        self, name=None, value=None, primary_key=False, default=None, ddl="varchar(100)", max_len=256
     ):
         super(VarcharField, self).__init__(name, ddl, primary_key, default)
         self.max_len = max_len
+        self.value = value
+
+    def __get__(self, instance, owner):
+        return self.value
+
+    def __set__(self, instance, value):
+        if isinstance(value, str):
+            #  Judgment type
+            if len(value) <= self.max_len:
+                self.value = value
+            else:
+                raise TypeError('Beyond the maximum length')
+        else:
+            raise TypeError('need a str')
+
+    def __delete__(self, instance):
+        self.value = None
 
     def __str__(self):
         return "<%s, %s>" % (self.__class__.__name__,  self.name)
 
 
 class IntegerField(Field):
-    def __init__(self, name=None, primary_key=False, default=0, max_len=20, min_len=0):
+    def __init__(self, name=None, primary_key=False, default=0, max_len=99, min_len=0):
         super(IntegerField, self).__init__(name, "bigint", primary_key, default)
         self.max_len = max_len
         self.min_len = min_len
 
+    def __get__(self, instance, owner):
+        return self.value
+
+    def __set__(self, instance, value):
+        if isinstance(value, int):
+            #  Judgment type
+            if value <= self.max_len and value >= self.min_len:
+                self.value = value
+            else:
+                raise TypeError('Beyond the maximum length')
+        else:
+            raise TypeError('need a int')
+
+    def __delete__(self, instance):
+        self.value = None
+
+    def __str__(self):
+        return "<%s, %s>" % (self.__class__.__name__,  self.name)
+
 
 class DateTimeField(Field):
+    python = datetime
 
     def __init__(self, auto_now_add: bool = False, has_timezone: bool = False, name=None, **kwargs):
         super(DateTimeField, self).__init__(name=name, column_type=None, primary_key=False, default=datetime, **kwargs)
@@ -61,7 +98,6 @@ class BooleanField(Field):
 
     def __set__(self, instance, value):
         if isinstance(value, bool):
-            #  Judgment type
             self.value = value
         else:
             raise TypeError("need a bool")
