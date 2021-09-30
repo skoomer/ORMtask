@@ -1,3 +1,4 @@
+from fields import *
 import psycopg2
 from psycopg2 import Error
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
@@ -6,21 +7,22 @@ root = environ.Path(__file__)   # get root of the project
 env = environ.Env()
 environ.Env.read_env()
 
-from fields import *
 
 def connect_orm_task():
-  return psycopg2.connect(
-    dbname = env.str("POSTGRES_DB"),
-    user = env.str("POSTGRES_USER"),
-    password = env.str("POSTGRES_PASSWORD"),
-    host= env.str("POSTGRES_HOST"),
-    port= env.str("POSTGRES_PORT")
-  )
+    return psycopg2.connect(
+        dbname=env.str("POSTGRES_DB"),
+        user=env.str("POSTGRES_USER"),
+        password=env.str("POSTGRES_PASSWORD"),
+        host=env.str("POSTGRES_HOST"),
+        port=env.str("POSTGRES_PORT")
+    )
+
 
 def db_list_tables(conn):
-  cur = conn.cursor()
-  cur.execute("select relname from pg_class where relkind='r' and relname !~ '^(pg_|sql_)';")
-  return cur.fetchall()
+    cur = conn.cursor()
+    cur.execute("select relname from pg_class where relkind='r' and relname !~ '^(pg_|sql_)';")
+    return cur.fetchall()
+
 
 def close_connect(connection):
     cursor = connection.cursor()
@@ -29,10 +31,12 @@ def close_connect(connection):
         cursor.close()
         connection.close()
     else:
-        print("Error connection close")  
+        print("Error connection close")
+
 
 connection = connect_orm_task()
 cursor = connection.cursor()
+
 
 def create_table(
     sql_query: str,
@@ -60,6 +64,7 @@ class Car(object):
     entity = IntegerField("entity", max_len=50)
     pub_date = DateTimeField(name="pub_date", auto_now_add=datetime.datetime.now())
     check = BooleanField(name="check", deffault=True)
+
 
 sql = f"""
         CREATE TABLE {Car.table_name} (
