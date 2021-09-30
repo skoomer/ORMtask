@@ -14,65 +14,56 @@ class Field(object):
 
 class VarcharField(Field):
     def __init__(
-        self, name=None, value=None, primary_key=False, default=None, ddl="varchar(100)", max_len=256
+        self, name=None, value=None, primary_key=False, field_type='varchar', default=None, ddl="varchar(100)", max_len=256
     ):
         super(VarcharField, self).__init__(name, ddl, primary_key, default)
         self.max_len = max_len
-        self.value = value
-
-    def __get__(self, instance, owner):
-        return self.value
+        self.name = name
+        self.field_type = 'VARCHAR'
 
     def __set__(self, instance, value):
-        if isinstance(value, str):
-            #  Judgment type
-            if len(value) <= self.max_len:
-                self.value = value
-            else:
-                raise TypeError('Beyond the maximum length')
+      if isinstance(value, str):
+        if len(value) <= self.max_len:
+          self.value = value
         else:
-            raise TypeError('need a str')
-
-    def __delete__(self, instance):
-        self.value = None
+          raise TypeError('Beyond the maximum length')
+      else:
+        raise TypeError('need a str')
 
     def __str__(self):
         return "<%s, %s>" % (self.__class__.__name__,  self.name)
 
 
 class IntegerField(Field):
-    def __init__(self, name=None, primary_key=False, default=0, max_len=99, min_len=0):
-        super(IntegerField, self).__init__(name, "bigint", primary_key, default)
+    def __init__(self, name=None, value=None, primary_key=False, default=0, max_len=99, min_len=0):
+        super(IntegerField, self).__init__(name, default, primary_key, default)
         self.max_len = max_len
         self.min_len = min_len
-
-    def __get__(self, instance, owner):
-        return self.value
+        self.name = name
+        self.field_type = 'integer'
 
     def __set__(self, instance, value):
-        if isinstance(value, int):
-            #  Judgment type
-            if value <= self.max_len and value >= self.min_len:
-                self.value = value
-            else:
-                raise TypeError('Beyond the maximum length')
+      if isinstance(value, int):
+        if value <= self.max_len and value >= self.min_len:
+          self.value = value
         else:
-            raise TypeError('need a int')
-
-    def __delete__(self, instance):
-        self.value = None
+          raise TypeError('Beyond the maximum length')
+      else:
+        raise TypeError('need a int')
 
     def __str__(self):
         return "<%s, %s>" % (self.__class__.__name__,  self.name)
 
 
 class DateTimeField(Field):
+ 
     python = datetime
 
     def __init__(self, auto_now_add: bool = False, has_timezone: bool = False, name=None, **kwargs):
         super(DateTimeField, self).__init__(name=name, column_type=None, primary_key=False, default=datetime, **kwargs)
         self.automatically_add = auto_now_add
         self.has_timezone = has_timezone
+        self.field_type = 'timestamp'
 
     def _get_default_val(self):
         default = ""
@@ -92,9 +83,7 @@ class BooleanField(Field):
     def __init__(self, name=None, deffault=False):
         super(BooleanField, self).__init__(name, primary_key=False, column_type=bool, default=False)
         self.value = deffault
-
-    def __get__(self, instance, owner):
-        return self.value
+        self.field_type = 'boolean'
 
     def __set__(self, instance, value):
         if isinstance(value, bool):
@@ -104,7 +93,7 @@ class BooleanField(Field):
 
 
 class OneToOneField(Field):
-    def __init__(self, rel_class, name=None):
+    def __init__(self, name=None, rel_class=None):
         super(OneToOneField, self).__init__(
             name, primary_key=False, default=0, column_type=None
         )
