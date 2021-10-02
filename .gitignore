@@ -7,6 +7,6 @@ myvenv
 .pytest_cache
 poetry.lock
 __pycache__
-postgres-data
+postgres-data/
 .vscode
 
