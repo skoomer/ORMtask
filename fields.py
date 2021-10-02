@@ -1,4 +1,4 @@
-from datetime import *
+import datetime
 
 
 class Field(object):
@@ -14,12 +14,12 @@ class Field(object):
 
 class VarcharField(Field):
     def __init__(
-        self, name=None, value=None, primary_key=False, field_type='varchar', default=None, ddl="varchar(100)", max_len=256
+        self, name=None, value=None, primary_key=False, default=None, max_len=256
     ):
-        super(VarcharField, self).__init__(name, ddl, primary_key, default)
+        super(VarcharField, self).__init__(name, primary_key, default, value)
         self.max_len = max_len
         self.name = name
-        self.field_type = 'VARCHAR'
+        self.field_type = 'varchar'
 
     def __set__(self, instance, value):
       if isinstance(value, str):

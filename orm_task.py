@@ -23,6 +23,8 @@ def db_list_tables(conn):
     cur.execute("select relname from pg_class where relkind='r' and relname !~ '^(pg_|sql_)';")
     return cur.fetchall()
 
+connection = connect_orm_task()
+cursor = connection.cursor()
 
 def close_connect(connection):
     cursor = connection.cursor()
@@ -34,8 +36,7 @@ def close_connect(connection):
         print("Error connection close")
 
 
-connection = connect_orm_task()
-cursor = connection.cursor()
+
 
 
 def create_table(
