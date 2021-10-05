@@ -9,10 +9,10 @@ class ModelBase(type):
     def __new__(cls, name, bases, attrs, **kwargs):
         model_fields = []
         table_name = attrs.get("__tablename__", name)
-        new_attrs = dict()
+        new_attrs = {}
 
-        for k, v in attrs.items():
-            new_attrs[k] = v
+        for key, value in attrs.items():
+            new_attrs[key] = value
 
         for key, val in new_attrs.items():
             if isinstance(val, Field):
