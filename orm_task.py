@@ -1,8 +1,7 @@
-from fields import *
+import datetime
 import psycopg2
-from psycopg2 import Error
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 import environ
+from fields import VarcharField, IntegerField, BooleanField, DateTimeField
 root = environ.Path(__file__)   # get root of the project
 env = environ.Env()
 environ.Env.read_env()
@@ -23,20 +22,19 @@ def db_list_tables(conn):
     cur.execute("select relname from pg_class where relkind='r' and relname !~ '^(pg_|sql_)';")
     return cur.fetchall()
 
+
 connection = connect_orm_task()
 cursor = connection.cursor()
 
-def close_connect(connection):
-    cursor = connection.cursor()
-    if connection:
+
+def close_connect(conn):
+    cur = conn.cursor()
+    if conn:
         print("Connection close")
-        cursor.close()
-        connection.close()
+        cur.close()
+        conn.close()
     else:
         print("Error connection close")
-
-
-
 
 
 def create_table(
@@ -47,7 +45,7 @@ def create_table(
     try:
         # Execute the table creation query
         cur.execute(sql_query)
-    except Exception as e:
+    except ValueError as e:
         print(f"{type(e).__name__}: {e}")
         print(f"Query: {cur.query}")
         conn.rollback()
@@ -57,30 +55,17 @@ def create_table(
         conn.commit()
 
 
-class Car(object):
+class Car:
     table_name = "car"
 
     id = IntegerField("id", max_len=256)
     name = VarcharField(name="name", max_len=50)
     entity = IntegerField("entity", max_len=50)
     pub_date = DateTimeField(name="pub_date", auto_now_add=datetime.datetime.now())
-    check = BooleanField(name="check", deffault=True)
+    available = BooleanField(name="available", deffault=True)
 
 
-sql = f"""
-        CREATE TABLE {Car.table_name} (
-            {Car.id.name} SERIAL PRIMARY KEY,
-            {Car.name.name} {Car.name.field_type}(30),
-            {Car.pub_date.name} {Car.pub_date.field_type},
-            {Car.entity.name} {Car.entity.field_type},
-            {Car.check.name} {Car.check.field_type}
-        );
-          """
-
-
-create_table(sql, connection, cursor)
-connection.close()
-cursor.close()
+car = Car(id=1, entity=3, name='opel').create_table(connection)
 
 if __name__ == "__main__":
     # If the modules can't be imported, the following print won't happen

@@ -12,6 +12,9 @@ pytest = "^6.2.5"
 SQLAlchemy = "^1.4.23"
 psycopg2 = "^2.9.1"
 django-environ = "^0.7.0"
+flake8 = "^3.9.2"
+pre-commit = "^2.15.0"
+pylint = "^2.11.1"
 
 
 [tool.poetry.dev-dependencies]
