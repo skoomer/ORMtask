@@ -7,52 +7,23 @@ env = environ.Env()
 environ.Env.read_env()
 
 
-def connect_orm_task():
-    return psycopg2.connect(
-        dbname=env.str("POSTGRES_DB"),
-        user=env.str("POSTGRES_USER"),
-        password=env.str("POSTGRES_PASSWORD"),
-        host=env.str("POSTGRES_HOST"),
-        port=env.str("POSTGRES_PORT")
-    )
+class ConnectDB:
+    connection = None
 
+    @classmethod
+    def set_connection(cls, database_settings):
+        connection = psycopg2.connect(**database_settings)
+        connection.autocommit = True
+        cls.connection = connection
 
-def db_list_tables(conn):
-    cur = conn.cursor()
-    cur.execute("select relname from pg_class where relkind='r' and relname !~ '^(pg_|sql_)';")
-    return cur.fetchall()
+    @classmethod
+    def _get_cursor(cls):
+        return cls.connection.cursor()
 
-
-connection = connect_orm_task()
-cursor = connection.cursor()
-
-
-def close_connect(conn):
-    cur = conn.cursor()
-    if conn:
-        print("Connection close")
-        cur.close()
-        conn.close()
-    else:
-        print("Error connection close")
-
-
-def create_table(
-    sql_query: str,
-    conn: psycopg2.extensions.connection,
-    cur: psycopg2.extensions.cursor,
-) -> None:
-    try:
-        # Execute the table creation query
-        cur.execute(sql_query)
-    except ValueError as e:
-        print(f"{type(e).__name__}: {e}")
-        print(f"Query: {cur.query}")
-        conn.rollback()
-        cur.close()
-    else:
-        # To take effect, changes need be committed to the database
-        conn.commit()
+    @classmethod
+    def _execute_query(cls, query, params=None):
+        cursor = cls._get_cursor()
+        cursor.execute(query, params)
 
 
 class Car:
@@ -65,7 +36,17 @@ class Car:
     available = BooleanField(name="available", deffault=True)
 
 
-car = Car(id=1, entity=3, name='opel').create_table(connection)
+DB_SETTINGS = {
+    'host': env.str("POSTGRES_HOST"),
+    'port': env.str("POSTGRES_PORT"),
+    'database': env.str("POSTGRES_DB"),
+    'user': env.str("POSTGRES_USER"),
+    'password': env.str("POSTGRES_PASSWORD")
+}
+
+ConnectDB.set_connection(database_settings=DB_SETTINGS)
+
+car = Car(id=1, entity=3, name='opel')
 
 if __name__ == "__main__":
     # If the modules can't be imported, the following print won't happen
