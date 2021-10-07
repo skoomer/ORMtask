@@ -1,11 +1,20 @@
 import logging
 from fields import Field
-
+from orm_task import ConnectDB
 
 log = logging.getLogger(__name__)
 
 
 class ModelBase(type):
+    manager_class = ConnectDB
+
+    def _get_manager(cls):
+        return cls.manager_class(model_class=cls)
+
+    @property
+    def objects(cls):
+        return cls._get_manager()
+
     def __new__(cls, name, bases, attrs, **kwargs):
         model_fields = []
         table_name = attrs.get("__tablename__", name)
