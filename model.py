@@ -64,3 +64,23 @@ class Model(metaclass=ModelBase):
         with conn.cursor() as cursor:
             cursor.execute(query)
             conn.commit()
+
+    def save(self, conn, commit: bool = True):
+        """Saves the current model instace to the database"""
+        attrs = self.attrs
+        table_name = self.table_name
+        col_string = ", ".join(attrs.keys())
+        param_string = ", ".join("%s" for _ in range(len(attrs.keys())))
+
+        query = f"INSERT INTO {table_name} ({col_string}) VALUES({param_string})"
+        values = []
+
+        for v in attrs.values():
+            if isinstance(v, Model):
+                values.append(v.id)
+            else:
+                values.append(v)
+
+        with conn.cursor() as cursor:
+            cursor.execute(query, tuple(values))
+            conn.commit()

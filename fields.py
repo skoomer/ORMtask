@@ -2,14 +2,21 @@ import datetime
 
 
 class Field:
-    def __init__(self, unique: bool = False, name=None, column_type=None,
-                 primary_key=False, default=None, value=None, null=False, blank=False):
-        self.name = name
-        self.column_type = column_type
+    def __init__(
+        self,
+        unique: bool = False,
+        primary_key=False,
+        name=None,
+        column_type=None,
+        default=None,
+        value=None,
+        null=False,
+        blank=False
+    ):
+
         self.primary_key = primary_key
         self.default = default
         self.blank, self.null = blank, null
-        self.value = value
         self.nullable = null
         self.is_unique = unique
         self.column_name = None
@@ -28,21 +35,22 @@ class Field:
 
 class VarcharField(Field):
     def __init__(
-            self, name=None, null=False, primary_key=False, default=None, max_len=256, **kwargs):
-        super(VarcharField, self).__init__(name, primary_key, default, **kwargs)
+            self, min_len=None, max_len=256, **kwargs):
+        super(VarcharField, self).__init__(**kwargs)
         self.max_len = max_len
-        self.name = name
-        self.field_type = 'varchar'
-        self.null = null
+        self.min_len = min_len
 
-    def __set__(self, instance, value):
-        if isinstance(value, str):
-            if len(value) <= self.max_len:
-                self.value = value
-            else:
-                raise TypeError('Beyond the maximum length')
-        else:
-            raise TypeError('need a str')
+    def validate(self, value):
+        if not isinstance(value, str):
+            raise TypeError(f'Expected {value!r} to be an str')
+        if self.min_len is not None and len(value) < self.min_len:
+            raise ValueError(
+                f'Expected {value!r} to be no smaller than {self.min_len!r}'
+            )
+        if self.max_len is not None and len(value) > self.max_len:
+            raise ValueError(
+                f'Expected {value!r} to be no bigger than {self.max_len!r}'
+            )
 
     def to_sql(self):
         null = ""
@@ -68,16 +76,18 @@ class IntegerField(Field):
         self.max_len = max_len
         self.min_len = min_len
         self.name = name
-        self.field_type = 'integer'
 
-    def __set__(self, instance, value):
-        if isinstance(value, int):
-            if self.max_len <= value >= self.min_len:
-                self.value = value
-            else:
-                raise TypeError('Beyond the maximum length')
-        else:
-            raise TypeError('need a int')
+    def validate(self, value):
+        if not isinstance(value, (int, float)):
+            raise TypeError(f'Expected {value!r} to be an int or float')
+        if self.min_len is not None and value < self.min_len:
+            raise ValueError(
+                f'Expected {value!r} to be at least {self.min_len!r}'
+            )
+        if self.max_len is not None and value > self.max_len:
+            raise ValueError(
+                f'Expected {value!r} to be no more than {self.max_len!r}'
+            )
 
     def to_sql(self):
         null = ""
