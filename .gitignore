@@ -3,10 +3,14 @@ pagila-insert-data.sql
 pagila-schema.sql
 note.txt
 .env
+.edea/
 myvenv
 .pytest_cache
 poetry.lock
 __pycache__
 postgres-data/
 .vscode
+htmlcov/
+.coverage
+test/__pycache__
 

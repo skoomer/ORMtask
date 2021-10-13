@@ -1,6 +1,6 @@
 import logging
 from fields import Field
-from orm_task import ConnectDB
+from connect_db import ConnectDB
 
 log = logging.getLogger(__name__)
 
@@ -45,7 +45,6 @@ class Model(metaclass=ModelBase):
         for key, val in kwargs.items():
             if key not in self._valid_fields:
                 raise ValueError(f"error key{key}, error valid fields{self._valid_fields}")
-
             setattr(self, key, val)
 
     @classmethod

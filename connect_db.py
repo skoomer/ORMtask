@@ -32,17 +32,6 @@ class ConnectDB:
         cursor = cls._get_cursor()
         cursor.execute(query, params)
 
-    def select(self, *field_names, chunk_size=2000):
-        # Build SELECT query
-        fields_format = ', '.join(field_names)
-        query = f"SELECT {fields_format} FROM {self.model_class.table_name};"
-
-        # Execute query
-        cursor = self._get_cursor()
-        cursor.execute(query)
-        result = cursor.fetchmany()
-        return result
-
 
 if __name__ == "__main__":
     # If the modules can't be imported, the following print won't happen
