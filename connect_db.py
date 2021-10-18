@@ -20,8 +20,10 @@ class ConnectDB:
         connection.autocommit = True
         cls.connection = connection
 
-    def __init__(self, model_class):
+    def __init__(self, model_class, **kwargs):
         self.model_class = model_class
+        self.attrs = kwargs
+        self.db = getattr(model_class, "db", None)
 
     @classmethod
     def _get_cursor(cls):

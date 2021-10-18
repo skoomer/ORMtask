@@ -65,13 +65,12 @@ class Model(metaclass=ModelBase):
             conn.commit()
 
     def save(self, conn, commit: bool = True):
-        """Saves the current model instace to the database"""
+        """save current instance to table"""
         attrs = self.attrs
         table_name = self.table_name
         col_string = ", ".join(attrs.keys())
         param_string = ", ".join("%s" for _ in range(len(attrs.keys())))
-
-        query = f"INSERT INTO {table_name} ({col_string}) VALUES({param_string})"
+        query = f"INSERT INTO {table_name} ({col_string}) VALUES({param_string}) RETURNING Id;"
         values = []
 
         for v in attrs.values():
@@ -82,4 +81,15 @@ class Model(metaclass=ModelBase):
 
         with conn.cursor() as cursor:
             cursor.execute(query, tuple(values))
+            conn.commit()
+
+    def update(self, conn, ids=None):
+        """Updates current instance"""
+        attrs = self.attrs
+        table_name = self.table_name
+        new_values = ", ".join([f"{key}=%s" for key in attrs.keys()])
+        query = f"UPDATE {table_name} SET {new_values} WHERE id={ids};"
+
+        with conn.cursor() as cursor:
+            cursor.execute(query, tuple(attrs.values()))
             conn.commit()
