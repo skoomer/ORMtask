@@ -19,6 +19,7 @@ class ModelBase(type):
         model_fields = []
         table_name = attrs.get("__tablename__", name)
         new_attrs = {}
+        connection = ConnectDB.connection
 
         for key, value in attrs.items():
             new_attrs[key] = value
@@ -27,7 +28,7 @@ class ModelBase(type):
             if isinstance(val, Field):
                 model_fields.append(val)
                 setattr(val, "column_name", key)
-
+        new_attrs["connection"] = connection
         new_attrs["table_name"] = table_name
         new_attrs["fields"] = model_fields
         new_attrs["_valid_fields"] = [field.column_name for field in model_fields]
@@ -38,9 +39,9 @@ class ModelBase(type):
 
 
 class Model(metaclass=ModelBase):
-
     def __init__(self, **kwargs):
         self.attrs = kwargs
+        self.query = ConnectDB._get_cursor()
 
         for key, val in kwargs.items():
             if key not in self._valid_fields:
@@ -48,7 +49,7 @@ class Model(metaclass=ModelBase):
             setattr(self, key, val)
 
     @classmethod
-    def create_table(cls, conn):
+    def create_table(cls):
         """Creates the table for the model"""
         log.info(f"Creating table for Model '{cls.table_name}'")
         columns = [f"{field.column_name} {field.to_sql()}" for field in cls.fields]
@@ -59,12 +60,11 @@ class Model(metaclass=ModelBase):
             cls.table_name,
             ",\n".join(columns),
         )
+        connection = cls.connection
+        cursor = connection.cursor()
+        cursor.execute(query)
 
-        with conn.cursor() as cursor:
-            cursor.execute(query)
-            conn.commit()
-
-    def save(self, conn, commit: bool = True):
+    def save(self, commit: bool = True):
         """save current instance to table"""
         attrs = self.attrs
         table_name = self.table_name
@@ -79,17 +79,14 @@ class Model(metaclass=ModelBase):
             else:
                 values.append(v)
 
-        with conn.cursor() as cursor:
-            cursor.execute(query, tuple(values))
-            conn.commit()
+        self.query.execute(query, tuple(values))
 
-    def update(self, conn, ids=None):
+    def update(self):
         """Updates current instance"""
         attrs = self.attrs
+        ids = attrs.get("id", None)
+        print(attrs)
         table_name = self.table_name
         new_values = ", ".join([f"{key}=%s" for key in attrs.keys()])
         query = f"UPDATE {table_name} SET {new_values} WHERE id={ids};"
-
-        with conn.cursor() as cursor:
-            cursor.execute(query, tuple(attrs.values()))
-            conn.commit()
+        self.query.execute(query, tuple(attrs.values()))

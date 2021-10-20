@@ -34,7 +34,7 @@ class TestModel(TestCase):
     def setUp(self):
         self.cursor = con.cursor()
         with pool.getconn() as conn:
-            Book.create_table(conn)
+            Book.create_table()
             pool.putconn(conn)
 
     def test_check_exist_table(self):
@@ -44,16 +44,16 @@ class TestModel(TestCase):
             self.assertEqual(row, (True,))
 
     def test_model_save_instance(self):
-        Book(entity=3).save(con)
-        Book(entity=3).save(con)
+        Book(entity=3).save()
+        Book(entity=3).save()
         query = "SELECT count(*) FROM book;"
         self.cursor.execute(query)
         for row in self.cursor:
             self.assertEqual(row, (2,))
 
     def test_update_instance(self):
-        book = Book(entity=1)
-        book.update(con, ids=1)
+        book = Book(entity=1, id=1)
+        book.update()
         query = "SELECT book.entity FROM book WHERE id=1;"
         self.cursor.execute(query)
         for row in self.cursor:
