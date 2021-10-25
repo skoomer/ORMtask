@@ -23,8 +23,6 @@ pool = psycopg2.pool.SimpleConnectionPool(1, 10, database=env.str("POSTGRES_DB")
 
 
 class Book(Model):
-    manager = ConnectDB
-    table_name = 'book'
     id = IntegerField(name='id', auto_increment=True)
     entity = IntegerField(name='entity')
 
@@ -52,8 +50,7 @@ class TestModel(TestCase):
             self.assertEqual(row, (2,))
 
     def test_update_instance(self):
-        book = Book(entity=1, id=1)
-        book.update()
+        Book(entity=1, id=1)._update()
         query = "SELECT book.entity FROM book WHERE id=1;"
         self.cursor.execute(query)
         for row in self.cursor:

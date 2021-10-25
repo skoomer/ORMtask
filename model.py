@@ -67,26 +67,32 @@ class Model(metaclass=ModelBase):
     def save(self, commit: bool = True):
         """save current instance to table"""
         attrs = self.attrs
-        table_name = self.table_name
-        col_string = ", ".join(attrs.keys())
-        param_string = ", ".join("%s" for _ in range(len(attrs.keys())))
-        query = f"INSERT INTO {table_name} ({col_string}) VALUES({param_string}) RETURNING Id;"
-        values = []
+        ids = attrs.get("id", None)
+        if ids:
+            self._update()
+        else:
+            table_name = self.table_name
+            col_string = ", ".join(attrs.keys())
+            param_string = ", ".join("%s" for _ in range(len(attrs.keys())))
+            query = f"INSERT INTO {table_name} ({col_string}) VALUES({param_string}) RETURNING Id;"
+            values = []
 
-        for v in attrs.values():
-            if isinstance(v, Model):
-                values.append(v.id)
-            else:
-                values.append(v)
+            for v in attrs.values():
+                if isinstance(v, Model):
+                    values.append(v.id)
+                else:
+                    values.append(v)
 
-        self.query.execute(query, tuple(values))
+            self.query.execute(query, tuple(values))
 
-    def update(self):
+    def _update(self):
         """Updates current instance"""
         attrs = self.attrs
         ids = attrs.get("id", None)
-        print(attrs)
-        table_name = self.table_name
-        new_values = ", ".join([f"{key}=%s" for key in attrs.keys()])
-        query = f"UPDATE {table_name} SET {new_values} WHERE id={ids};"
-        self.query.execute(query, tuple(attrs.values()))
+        if ids:
+            table_name = self.table_name
+            new_values = ", ".join([f"{key}=%s" for key in attrs.keys()])
+            query = f"UPDATE {table_name} SET {new_values} WHERE id={ids};"
+            self.query.execute(query, tuple(attrs.values()))
+        else:
+            raise AttributeError('Instance no have ids for update')
