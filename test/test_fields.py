@@ -32,14 +32,20 @@ class TestIntegerField(TestCase):
 
     def test_class_validate(self):
         desc = self._make_one_integerfield()
-        with pytest.raises(TypeError):
-            desc.validate('string')
+        with pytest.raises(TypeError) as excinfo:
+            value = 'str'
+            desc.validate(value)
+        self.assertEqual(str(excinfo.value), (f'Expected {value!r} to be an int'))
 
-        with pytest.raises(ValueError):
-            desc.validate(86)
+        with pytest.raises(ValueError) as excinfo:
+            value = 86
+            desc.validate(value)
+        self.assertEqual(str(excinfo.value), (f'Expected {value!r} to be no more than {desc.max_len!r}'))
 
-        with pytest.raises(ValueError):
-            desc.validate(1)
+        with pytest.raises(ValueError) as excinfo:
+            value = 1
+            desc.validate(value)
+        self.assertEqual(str(excinfo.value), (f'Expected {value!r} to be at least {desc.min_len!r}'))
 
     def test_class_desc_get(self):
         desc = self._make_one_integerfield(value=5)

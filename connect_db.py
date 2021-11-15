@@ -1,5 +1,6 @@
 import psycopg2
 import environ
+
 root = environ.Path(__file__)   # get root of the project
 env = environ.Env()
 environ.Env.read_env()
@@ -7,18 +8,22 @@ environ.Env.read_env()
 
 class ConnectDB:
     connection = None
+    dbname = env.str("POSTGRES_DB")
+    user = env.str("POSTGRES_USER")
+    password = env.str("POSTGRES_PASSWORD")
+    host = env.str("POSTGRES_HOST")
+    port = env.str("POSTGRES_PORT")
 
     @classmethod
-    def set_connection(cls):
-        connection = psycopg2.connect(
-            dbname=env.str("POSTGRES_DB"),
-            user=env.str("POSTGRES_USER"),
-            password=env.str("POSTGRES_PASSWORD"),
-            host=env.str("POSTGRES_HOST"),
-            port=env.str("POSTGRES_PORT"),
-        )
-        connection.autocommit = True
-        cls.connection = connection
+    def set_connection(cls, connection=None):
+        try:
+            connection = psycopg2.connect(dbname=cls.dbname,
+                                          user=cls.user, password=cls.password, host=cls.host, port=cls.port)
+            connection.autocommit = True
+            cls.connection = connection
+        except psycopg2.OperationalError:
+            cls.connection = "Unable connect database check run server and port"
+        return cls.connection
 
     def __init__(self, model_class, **kwargs):
         self.model_class = model_class

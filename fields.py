@@ -31,7 +31,7 @@ class Field:
         return self.null
 
     def __str__(self):
-        return "<%s, %s>" % (self.__class__.__name__, self.name)
+        return "<%s, %s>" % (self.__class__.__name__, self.column_name)
 
 
 class IntegerField(Field):
@@ -42,6 +42,7 @@ class IntegerField(Field):
             max_len=99,
             min_len=0,
             value=None,
+            unique: bool = False,
             small_int: bool = False,
             big_int: bool = False,
             auto_increment: bool = False,
@@ -53,6 +54,7 @@ class IntegerField(Field):
         self.big_int = big_int
         self.auto_increment = auto_increment
         self.value = value
+        self.is_unique = unique
 
         if auto_increment:
             self.python = None
@@ -62,7 +64,7 @@ class IntegerField(Field):
 
     def validate(self, value):
         if not isinstance(value, int):
-            raise TypeError(f'Expected {value!r} to be an int ')
+            raise TypeError(f'Expected {value!r} to be an int')
 
         if self.min_len is not None and value < self.min_len:
             raise ValueError(
