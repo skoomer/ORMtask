@@ -1,10 +1,36 @@
-from connect_db import ConnectDB
+
 from model import Model
-from fields import IntegerField
+from fields import IntegerField, AutoIncrementIDField, OneToOneField
+from connect_db import ConnectDB
+
+
 ConnectDB.set_connection()
 
 
-class Book2(Model):
+class Book(Model):
 
-    id = IntegerField(auto_increment=True)
-    entity = IntegerField(min_len=3)
+    id = AutoIncrementIDField()
+    entity = IntegerField()
+    my = IntegerField()
+
+
+class Book2(Model):
+    id = AutoIncrementIDField()
+    entity = IntegerField()
+
+
+class Author(Model):
+    id = AutoIncrementIDField()
+    # id = IntegerField(auto_increment=True, primary_key=True)
+    entity = IntegerField()
+
+    book_id = OneToOneField(Book)
+    he = IntegerField()
+
+
+# a = Author().create_table()
+# a = Author(he=55,entity=33,book_id=1).save()
+author = Author(book_id=1)
+
+
+print(author.book_id)

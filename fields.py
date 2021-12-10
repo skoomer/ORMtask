@@ -1,13 +1,14 @@
-from typing import Any
+from typing import Any, Optional
+import psycopg2
+from connect_db import ConnectDB
 
 
 class Field:
     def __init__(
         self,
         unique: bool = False,
-        primary_key=False,
-        name=None,
-        column_type=None,
+        primary_key: bool = None,
+
         default: Any = None,
         value=None,
         null: bool = False,
@@ -19,7 +20,7 @@ class Field:
         self.nullable = null
         self.is_unique = unique
         self.column_name = None
-        self.name = name
+
         self.value = value
 
     def set_null(self, value):
@@ -29,6 +30,28 @@ class Field:
         else:
             self.null = 'NULL'
         return self.null
+
+    def _get_null_val(self):
+        if self.nullable:
+            return " NULL"
+        elif not self.nullable:
+            return " NOT NULL"
+
+    def _get_pk_val(self):
+        if self.primary_key:
+            return " PRIMARY KEY"
+        else:
+            return ""
+
+    def _get_unique_val(self):
+        if self.is_unique:
+            return " UNIQUE"
+        else:
+            return ""
+
+    def is_real_type(self):
+        """To check if the field is a real data type"""
+        return True
 
     def __str__(self):
         return "<%s, %s>" % (self.__class__.__name__, self.column_name)
@@ -42,12 +65,14 @@ class IntegerField(Field):
             max_len=99,
             min_len=0,
             value=None,
+            primary_key: bool = None,
             unique: bool = False,
             small_int: bool = False,
             big_int: bool = False,
             auto_increment: bool = False,
             **kwargs):
         super().__init__(**kwargs)
+        self.primary_key = primary_key
         self.max_len = max_len
         self.min_len = min_len
         self.small_int = small_int
@@ -60,6 +85,7 @@ class IntegerField(Field):
             self.python = None
 
     def __get__(self, instance, owner):
+
         return self.value
 
     def validate(self, value):
@@ -81,22 +107,106 @@ class IntegerField(Field):
             self.value = value
 
     def to_sql(self):
-        null = ""
-        unique = ""
+        # null = ""
+        # unique = ""
+        # primary_key = ""
         pg_type = "INTEGER"
-        if not self.nullable:
-            null = " NOT NULL"
-        if self.is_unique:
-            unique = " UNIQUE"
+        # if not self.nullable:
+        #     null = " NOT NULL"
+        # if self.is_unique:
+        #     unique = " UNIQUE"
+        # if self.primary_key:
+        #     primary_key = " PRIMARY KEY"
 
         if self.auto_increment:
             if self.big_int:
                 pg_type = "BIGSERIAL"
             elif self.small_int:
                 pg_type = "SMALLSERIAL"
-            pg_type = "SERIAL"
+            else:
+                pg_type = "SERIAL"
+        elif self.big_int:
+            pg_type = "BIGINT"
+        elif self.small_int:
+            pg_type = "SMALLINT"
 
-        return f"{pg_type}{unique}{null}"
+        return f"{pg_type}{self._get_pk_val()}{self._get_unique_val()}{self._get_null_val()}"
+
+    def is_real_type(self):
+        return not self.auto_increment
 
     def __str__(self):
-        return "<%s, %s>" % (self.__class__.__name__, self.name)
+        return "<%s, %s>" % (self.__class__.__name__, self.column_name)
+
+
+class AutoIncrementIDField(IntegerField):
+    """An auto increasing id field, used as the id row for models"""
+
+    python = None
+
+    def __init__(self, small_int: bool = False, big_int: bool = False):
+        super().__init__(
+            big_int=big_int, small_int=small_int, auto_increment=True, primary_key=True
+        )
+
+    def is_real_type(self):
+        return False
+
+
+class OneToOneField(Field):
+
+    def __init__(self, to_class, column=None, sql_type: Optional[str] = "INTEGER", **kwargs):
+
+        super().__init__(**kwargs)
+
+        if isinstance(to_class, type):
+            self.to_class = to_class
+
+        elif isinstance(to_class, str):
+            self.to_class = to_class
+
+        if isinstance(column, Field):
+            self.column = column.column_name
+
+        elif isinstance(column, str):
+            self.column = column
+
+        self.column = column
+        self.sql_type = sql_type
+
+    def get_rel_class_id(self):
+        new_obj = []
+        execute_query = ConnectDB.connection.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
+        if self.column is not None:
+            query = "SELECT * FROM {} WHERE id = {} ".format(self.to_class.table_name, self.column)
+
+            new_attrs = {}
+            execute_query.execute(query)
+            record = execute_query.fetchone()
+
+            for field in self.to_class.fields:
+                new_attrs[field.column_name] = getattr(record, field.column_name)
+
+            new_obj.append(self.to_class(**new_attrs))
+
+            return new_obj.pop()
+        else:
+            self.column = None
+
+        # colnames = [desc[0] for desc in execute_query.description] # имя колонок в таблице(экземпляре)
+
+    def __get__(self, instance, owner):
+
+        return self.get_rel_class_id()
+
+    def to_sql(self):
+        sql = "INTEGER NOT NULL \nREFERENCES {0.to_class.table_name}({0.column}) "
+
+        return sql.format(self)
+
+    def is_real_type(self):
+        return False
+
+    def __set__(self, instance, value):
+
+        self.column = value

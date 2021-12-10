@@ -1,5 +1,6 @@
 import logging
-from fields import Field
+import psycopg2
+from fields import Field, AutoIncrementIDField, OneToOneField
 from connect_db import ConnectDB
 
 log = logging.getLogger(__name__)
@@ -23,6 +24,9 @@ class ModelBase(type):
         model_fields = []
         new_attrs = {}
 
+        if attrs.get("id") is None:
+            new_attrs["id"] = AutoIncrementIDField()
+
         for key, value in attrs.items():
             new_attrs[key] = value
 
@@ -30,18 +34,37 @@ class ModelBase(type):
             if isinstance(val, Field):
                 model_fields.append(val)
                 setattr(val, "column_name", key)
+
         new_attrs["connection"] = connection
         new_attrs["table_name"] = table_name
         new_attrs["fields"] = model_fields
+
         new_class = super().__new__(cls, name, bases, new_attrs)
 
         return new_class
 
 
 class Model(metaclass=ModelBase):
-    def __init__(self, **kwargs):
+    def __init__(self, rel_class=None, **kwargs):
         self.attrs = kwargs
         self.query = ConnectDB._get_cursor()
+
+        for key, value in self.attrs.items():
+            for column in self.find_rel_field():
+                if key == column.column_name:
+                    column.column = value
+
+        for key, val in kwargs.items():
+            setattr(self, key, val)
+
+    def find_rel_field(self):
+
+        new_obj = []
+
+        for field in self.fields:
+            if isinstance(field, OneToOneField):
+                new_obj.append(field)
+        return new_obj
 
     @classmethod
     def create_table(cls):
@@ -91,3 +114,53 @@ class Model(metaclass=ModelBase):
             self.query.execute(query, tuple(attrs.values()))
         else:
             raise AttributeError('Instance no have ids for update')
+
+    @classmethod
+    def get(cls, ids):
+        query = "SELECT * FROM {} WHERE id = {}".format(cls.table_name, ids)
+        connection = cls.connection
+        cursor = connection.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
+        cursor.execute(query)
+        new_attrs = {}
+        record = cursor.fetchone()
+
+        for field in cls.fields:
+            new_attrs[field.column_name] = getattr(record, field.column_name)
+
+            if isinstance(field, OneToOneField):
+
+                new_attrs[field.column_name] = OneToOneField(field.to_class).get_rel_class_id()
+
+        return cls(**new_attrs)
+
+    @classmethod
+    def all(cls):
+        query_set = []
+
+        query = "SELECT * FROM {} ;".format(cls.table_name)
+        connection = cls.connection
+        cursor = connection.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
+        cursor.execute(query)
+
+        result = cursor.fetchall()
+        aps = []
+        if result:
+            colnames = [desc[0] for desc in cursor.description]
+            query_set = [dict(zip(colnames, row)) for row in result]
+
+        for field in query_set:
+            aps.append(cls._return_model(field))
+        # # return query_set
+        # return ([new_attrs])
+        return aps
+        # return  ([cls._return_model(row) for row in query_set])
+
+    @classmethod
+    def _return_model(cls, query_set: dict):
+        if bool(query_set):
+            return cls(**query_set)
+        else:
+            return None
+    # @classmethod
+    # def filter(cls, kwargs):
+    #   query = "SELECT * FROM {};".format(cls.table_name)
