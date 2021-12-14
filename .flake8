@@ -1,0 +1,11 @@
+[flake8]
+
+exclude =
+        .gitignore,
+        ./myvenv,
+        __pycache__,
+        .pytest_cashe
+        iterators/Tree
+ignore = 
+        F811
+max-line-length = 120
