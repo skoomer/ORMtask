@@ -46,6 +46,7 @@ class ModelBase(type):
 
 class Model(metaclass=ModelBase):
     def __init__(self, rel_class=None, **kwargs):
+
         self.attrs = kwargs
         self.query = ConnectDB._get_cursor()
 
@@ -70,7 +71,16 @@ class Model(metaclass=ModelBase):
     def create_table(cls):
         """Creates the table for the model"""
         log.info(f"Creating table for Model '{cls.table_name}'")
+
+        for field in cls.fields:
+            if isinstance(field, OneToOneField):
+                if field.column is None:
+                    field.column = 'Id'
+                else:
+                    return None
+
         columns = [f"{field.column_name} {field.to_sql()}" for field in cls.fields]
+
         query = """
                 CREATE TABLE IF NOT EXISTS %s (
                     %s
@@ -132,35 +142,3 @@ class Model(metaclass=ModelBase):
                 new_attrs[field.column_name] = OneToOneField(field.to_class).get_rel_class_id()
 
         return cls(**new_attrs)
-
-    @classmethod
-    def all(cls):
-        query_set = []
-
-        query = "SELECT * FROM {} ;".format(cls.table_name)
-        connection = cls.connection
-        cursor = connection.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
-        cursor.execute(query)
-
-        result = cursor.fetchall()
-        aps = []
-        if result:
-            colnames = [desc[0] for desc in cursor.description]
-            query_set = [dict(zip(colnames, row)) for row in result]
-
-        for field in query_set:
-            aps.append(cls._return_model(field))
-        # # return query_set
-        # return ([new_attrs])
-        return aps
-        # return  ([cls._return_model(row) for row in query_set])
-
-    @classmethod
-    def _return_model(cls, query_set: dict):
-        if bool(query_set):
-            return cls(**query_set)
-        else:
-            return None
-    # @classmethod
-    # def filter(cls, kwargs):
-    #   query = "SELECT * FROM {};".format(cls.table_name)

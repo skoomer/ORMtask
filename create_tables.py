@@ -11,26 +11,35 @@ class Book(Model):
 
     id = AutoIncrementIDField()
     entity = IntegerField()
-    my = IntegerField()
-
-
-class Book2(Model):
-    id = AutoIncrementIDField()
-    entity = IntegerField()
 
 
 class Author(Model):
     id = AutoIncrementIDField()
     # id = IntegerField(auto_increment=True, primary_key=True)
     entity = IntegerField()
-
     book_id = OneToOneField(Book)
-    he = IntegerField()
 
 
-# a = Author().create_table()
-# a = Author(he=55,entity=33,book_id=1).save()
-author = Author(book_id=1)
+# Book().create_table()
+# Author().create_table()
+# Book(entity=5).save()
+# Author(entity = 33,book_id = 1).save()
+
+class Profile(Model):
+    id = AutoIncrementIDField()
+    entity = IntegerField()
 
 
-print(author.book_id)
+class MyUser(Model):
+    id = AutoIncrementIDField()
+    profile_id = OneToOneField(Profile)
+
+# Profile().create_table()
+# MyUser().create_table()
+# Profile(entity=5).save()
+# MyUser(profile_id = 1).save()
+
+
+# author = Author()
+# author.get(ids=1)
+# print(author.entity)

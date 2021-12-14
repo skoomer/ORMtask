@@ -1,19 +1,25 @@
 from unittest.case import TestCase
 from model import Model
-from fields import IntegerField
+from fields import IntegerField, AutoIncrementIDField, OneToOneField
 from connect_db import ConnectDB
+ConnectDB.set_connection()
 
 
 class Book(Model):
-    id = IntegerField(auto_increment=True)
+    id = AutoIncrementIDField()
     entity = IntegerField()
+
+
+class Author(Model):
+    id = AutoIncrementIDField()
+    book_id = OneToOneField(Book)
 
 
 class TestModel(TestCase):
 
     def setUp(self):
-        Book.create_table()
-        self.cursor = ConnectDB.connection.cursor()
+        Book().create_table()
+        self.cursor = ConnectDB._get_cursor()
 
     def test_check_exist_table(self):
         query = "SELECT EXISTS ( SELECT * FROM information_schema.tables WHERE table_name = 'book');"
@@ -29,6 +35,7 @@ class TestModel(TestCase):
         self.assertEqual(Book.__name__, 'Book')
 
     def test_check_class_attr_with_param(self):
+
         query = "select exists ( select entity from book where null is null );"
         self.cursor.execute(query)
         for row in self.cursor:
@@ -41,6 +48,21 @@ class TestModel(TestCase):
         self.cursor.execute(query)
         for row in self.cursor:
             self.assertEqual(row, (2,))
+
+    def test_get_object(self):
+        Book(entity=4).save()
+        book = Book()
+        book.get(ids=1)
+        self.assertEqual(book.id, 1)
+
+    def test_get_object_relation(self):
+        Author().create_table()
+        Book(entity=4).save()
+        Author(book_id=1).save()
+        author = Author()
+        author.get(ids=1)
+        author.book_id = 1
+        self.assertEqual(author.book_id.id, 1)
 
     def test_update_instance(self):
         Book(entity=1, id=1)._update()
@@ -56,5 +78,23 @@ class TestModel(TestCase):
             self.assertEqual(column, (True,))
 
     def tearDown(self):
-        drop = "DROP TABLE IF EXISTS book;"
+        drop = "DROP TABLE IF EXISTS book,author CASCADE;"
         self.cursor.execute(drop)
+
+    # @classmethod
+    # def get(cls, ids):
+    #     query = "SELECT * FROM {} WHERE id = {}".format(cls.table_name, ids)
+    #     connection = cls.connection
+    #     cursor = connection.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
+    #     cursor.execute(query)
+    #     new_attrs = {}
+    #     record = cursor.fetchone()
+
+    #     for field in cls.fields:
+    #         new_attrs[field.column_name] = getattr(record, field.column_name)
+
+    #         if isinstance(field, OneToOneField):
+
+    #             new_attrs[field.column_name] = OneToOneField(field.to_class).get_rel_class_id()
+
+    #     return cls(**new_attrs)
