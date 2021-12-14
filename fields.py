@@ -1,5 +1,7 @@
 from typing import Any, Optional
 import psycopg2
+import psycopg2.extras
+# from model import Model
 from connect_db import ConnectDB
 
 
@@ -107,16 +109,7 @@ class IntegerField(Field):
             self.value = value
 
     def to_sql(self):
-        # null = ""
-        # unique = ""
-        # primary_key = ""
         pg_type = "INTEGER"
-        # if not self.nullable:
-        #     null = " NOT NULL"
-        # if self.is_unique:
-        #     unique = " UNIQUE"
-        # if self.primary_key:
-        #     primary_key = " PRIMARY KEY"
 
         if self.auto_increment:
             if self.big_int:
@@ -156,9 +149,7 @@ class AutoIncrementIDField(IntegerField):
 class OneToOneField(Field):
 
     def __init__(self, to_class, column=None, sql_type: Optional[str] = "INTEGER", **kwargs):
-
         super().__init__(**kwargs)
-
         if isinstance(to_class, type):
             self.to_class = to_class
 
@@ -177,7 +168,8 @@ class OneToOneField(Field):
     def get_rel_class_id(self):
         new_obj = []
         execute_query = ConnectDB.connection.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
-        if self.column is not None:
+
+        if self.to_class and self.column is not None:
             query = "SELECT * FROM {} WHERE id = {} ".format(self.to_class.table_name, self.column)
 
             new_attrs = {}
@@ -191,9 +183,7 @@ class OneToOneField(Field):
 
             return new_obj.pop()
         else:
-            self.column = None
-
-        # colnames = [desc[0] for desc in execute_query.description] # имя колонок в таблице(экземпляре)
+            return None
 
     def __get__(self, instance, owner):
 
