@@ -1,6 +1,7 @@
 import psycopg2
 import environ
-root = environ.Path(__file__)   # get root of the project
+
+root = environ.Path(__file__)  # get root of the project
 env = environ.Env()
 environ.Env.read_env()
 
@@ -16,12 +17,19 @@ class ConnectDB:
     @classmethod
     def set_connection(cls):
         try:
-            connection = psycopg2.connect(dbname=cls.dbname,
-                                          user=cls.user, password=cls.password, host=cls.host, port=cls.port)
+            connection = psycopg2.connect(
+                dbname=cls.dbname,
+                user=cls.user,
+                password=cls.password,
+                host=cls.host,
+                port=cls.port,
+            )
             connection.autocommit = True
             cls.connection = connection
         except psycopg2.OperationalError:
-            print("Unable connect database check run server and port host etc ....")
+            raise ConnectionError(
+                "Unable connect database check run server and port host etc ...."
+            )
         return cls.connection
 
     @classmethod

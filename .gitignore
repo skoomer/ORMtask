@@ -14,4 +14,4 @@ htmlcov/
 .coverage
 test/__pycache__
 today.txt
-create_tables.py
+create_table.py
