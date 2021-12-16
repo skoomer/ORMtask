@@ -11,7 +11,7 @@ class ConnectDB:
     dbname = env.str("POSTGRES_DB")
     user = env.str("POSTGRES_USER")
     password = env.str("POSTGRES_PASSWORD")
-    host = env.str("POSTGRES_HOST")
+    host = 4333
     port = env.str("POSTGRES_PORT")
 
     @classmethod
@@ -26,10 +26,10 @@ class ConnectDB:
             )
             connection.autocommit = True
             cls.connection = connection
-        except psycopg2.OperationalError:
+        except psycopg2.OperationalError as ex:
             raise ConnectionError(
                 "Unable connect database check run server and port host etc ...."
-            )
+            ) from ex
         return cls.connection
 
     @classmethod
