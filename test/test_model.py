@@ -1,7 +1,8 @@
 from unittest.case import TestCase
-from model import Model
+from model_base import Model
 from fields import IntegerField, AutoIncrementIDField, OneToOneField
 from connect_db import ConnectDB
+
 ConnectDB.set_connection()
 
 
@@ -16,7 +17,6 @@ class Author(Model):
 
 
 class TestModel(TestCase):
-
     def setUp(self):
         Book().create_table()
         self.cursor = ConnectDB._get_cursor()
@@ -29,10 +29,10 @@ class TestModel(TestCase):
 
     def test_get_fields_name(self):
         book = Book()
-        self.assertEqual(getattr(book.fields[0], 'column_name'), 'id')
+        self.assertEqual(getattr(book.fields[0], "column_name"), "id")
 
     def test_check_table_name(self):
-        self.assertEqual(Book.__name__, 'Book')
+        self.assertEqual(Book.__name__, "Book")
 
     def test_check_class_attr_with_param(self):
 
@@ -59,7 +59,7 @@ class TestModel(TestCase):
         Author().create_table()
         Book(entity=4).save()
         Author(book_id=1).save()
-        author = Author()
+        author = Author(book_id=1)
         author.get(ids=1)
         author.book_id = 1
         self.assertEqual(author.book_id.id, 1)
@@ -80,21 +80,3 @@ class TestModel(TestCase):
     def tearDown(self):
         drop = "DROP TABLE IF EXISTS book,author CASCADE;"
         self.cursor.execute(drop)
-
-    # @classmethod
-    # def get(cls, ids):
-    #     query = "SELECT * FROM {} WHERE id = {}".format(cls.table_name, ids)
-    #     connection = cls.connection
-    #     cursor = connection.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
-    #     cursor.execute(query)
-    #     new_attrs = {}
-    #     record = cursor.fetchone()
-
-    #     for field in cls.fields:
-    #         new_attrs[field.column_name] = getattr(record, field.column_name)
-
-    #         if isinstance(field, OneToOneField):
-
-    #             new_attrs[field.column_name] = OneToOneField(field.to_class).get_rel_class_id()
-
-    #     return cls(**new_attrs)

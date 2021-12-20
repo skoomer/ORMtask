@@ -72,13 +72,6 @@ class Model(metaclass=ModelBase):
         """Creates the table for the model"""
         log.info(f"Creating table for Model '{cls.table_name}'")
 
-        for field in cls.fields:
-            if isinstance(field, OneToOneField):
-                if field.column is None:
-                    field.column = 'Id'
-                else:
-                    return None
-
         columns = [f"{field.column_name} {field.to_sql()}" for field in cls.fields]
 
         query = """

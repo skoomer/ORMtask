@@ -1,7 +1,8 @@
 from typing import Any, Optional
 import psycopg2
 import psycopg2.extras
-# from model import Model
+import model_base
+
 from connect_db import ConnectDB
 
 
@@ -10,11 +11,10 @@ class Field:
         self,
         unique: bool = False,
         primary_key: bool = None,
-
         default: Any = None,
         value=None,
         null: bool = False,
-        blank=False
+        blank=False,
     ):
         self.primary_key = primary_key
         self.default = default
@@ -28,9 +28,9 @@ class Field:
     def set_null(self, value):
         self.null = value
         if self.null is False:
-            self.null = 'NOT NULL'
+            self.null = "NOT NULL"
         else:
-            self.null = 'NULL'
+            self.null = "NULL"
         return self.null
 
     def _get_null_val(self):
@@ -63,16 +63,17 @@ class IntegerField(Field):
     python = int
 
     def __init__(
-            self,
-            max_len=99,
-            min_len=0,
-            value=None,
-            primary_key: bool = None,
-            unique: bool = False,
-            small_int: bool = False,
-            big_int: bool = False,
-            auto_increment: bool = False,
-            **kwargs):
+        self,
+        max_len=99,
+        min_len=0,
+        value=None,
+        primary_key: bool = None,
+        unique: bool = False,
+        small_int: bool = False,
+        big_int: bool = False,
+        auto_increment: bool = False,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.primary_key = primary_key
         self.max_len = max_len
@@ -92,16 +93,12 @@ class IntegerField(Field):
 
     def validate(self, value):
         if not isinstance(value, int):
-            raise TypeError(f'Expected {value!r} to be an int')
+            raise TypeError(f"Expected {value!r} to be an int")
 
         if self.min_len is not None and value < self.min_len:
-            raise ValueError(
-                f'Expected {value!r} to be at least {self.min_len!r}'
-            )
+            raise ValueError(f"Expected {value!r} to be at least {self.min_len!r}")
         if self.max_len is not None and value > self.max_len:
-            raise ValueError(
-                f'Expected {value!r} to be no more than {self.max_len!r}'
-            )
+            raise ValueError(f"Expected {value!r} to be no more than {self.max_len!r}")
         return value
 
     def __set__(self, instance, value):
@@ -147,30 +144,34 @@ class AutoIncrementIDField(IntegerField):
 
 
 class OneToOneField(Field):
-
-    def __init__(self, to_class, column=None, sql_type: Optional[str] = "INTEGER", **kwargs):
+    def __init__(
+        self, to_class, ids=None, sql_type: Optional[str] = "INTEGER", **kwargs
+    ):
         super().__init__(**kwargs)
-        if isinstance(to_class, type):
+        if isinstance(to_class, model_base.ModelBase):
             self.to_class = to_class
+        else:
+            raise AttributeError("Attribute must be class object")
 
-        elif isinstance(to_class, str):
-            self.to_class = to_class
+        if isinstance(ids, Field):
+            self.ids = ids.column_name
 
-        if isinstance(column, Field):
-            self.column = column.column_name
+        elif isinstance(ids, str):
+            self.ids = ids
 
-        elif isinstance(column, str):
-            self.column = column
-
-        self.column = column
+        self.ids = ids
         self.sql_type = sql_type
 
     def get_rel_class_id(self):
         new_obj = []
-        execute_query = ConnectDB.connection.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
+        execute_query = ConnectDB.connection.cursor(
+            cursor_factory=psycopg2.extras.NamedTupleCursor
+        )
 
-        if self.to_class and self.column is not None:
-            query = "SELECT * FROM {} WHERE id = {} ".format(self.to_class.table_name, self.column)
+        if self.to_class and self.ids is not None:
+            query = "SELECT * FROM {} WHERE id = {} ".format(
+                self.to_class.table_name, self.ids
+            )
 
             new_attrs = {}
             execute_query.execute(query)
@@ -182,21 +183,30 @@ class OneToOneField(Field):
             new_obj.append(self.to_class(**new_attrs))
 
             return new_obj.pop()
-        else:
-            return None
 
     def __get__(self, instance, owner):
 
         return self.get_rel_class_id()
 
     def to_sql(self):
-        sql = "INTEGER NOT NULL \nREFERENCES {0.to_class.table_name}({0.column}) "
+        sql = "INTEGER NOT NULL \nREFERENCES {0.to_class.table_name} "
 
         return sql.format(self)
 
     def is_real_type(self):
         return False
 
-    def __set__(self, instance, value):
+    def check_value_type(self, value):
 
-        self.column = value
+        if isinstance(value, float):
+            return False
+        if isinstance(value, int) or value.isdigit():
+            return True
+
+    def __set__(self, instance, value):
+        if value is None:
+            return None
+        if self.check_value_type(value):
+            self.ids = value
+        else:
+            raise ValueError("value must be number type")
