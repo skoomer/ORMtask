@@ -56,6 +56,7 @@ class Model(metaclass=ModelBase):
                     column.column = value
 
         for key, val in kwargs.items():
+
             setattr(self, key, val)
 
     def find_rel_field(self):
@@ -87,8 +88,11 @@ class Model(metaclass=ModelBase):
 
     def save(self, commit: bool = True):
         """save current instance to table"""
+
         attrs = self.attrs
+
         ids = attrs.get("id", None)
+
         if ids:
             self._update()
         else:
@@ -116,7 +120,7 @@ class Model(metaclass=ModelBase):
             query = f"UPDATE {table_name} SET {new_values} WHERE id={ids};"
             self.query.execute(query, tuple(attrs.values()))
         else:
-            raise AttributeError('Instance no have ids for update')
+            raise AttributeError("Instance no have ids for update")
 
     @classmethod
     def get(cls, ids):
@@ -132,6 +136,8 @@ class Model(metaclass=ModelBase):
 
             if isinstance(field, OneToOneField):
 
-                new_attrs[field.column_name] = OneToOneField(field.to_class).get_rel_class_id()
+                new_attrs[field.column_name] = OneToOneField(
+                    field.to_class
+                ).get_rel_class_id()
 
         return cls(**new_attrs)

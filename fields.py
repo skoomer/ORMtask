@@ -172,7 +172,6 @@ class OneToOneField(Field):
             query = "SELECT * FROM {} WHERE id = {} ".format(
                 self.to_class.table_name, self.ids
             )
-
             new_attrs = {}
             execute_query.execute(query)
             record = execute_query.fetchone()
@@ -199,14 +198,29 @@ class OneToOneField(Field):
     def check_value_type(self, value):
 
         if isinstance(value, float):
-            return False
+            raise ValueError("value must be int or class object")
         if isinstance(value, int) or value.isdigit():
             return True
+        else:
+            raise ValueError("value must be int or class object")
+
+    def get_value_object(self, instance, value):
+        execute_query = ConnectDB.connection.cursor(
+            cursor_factory=psycopg2.extras.NamedTupleCursor
+        )
+        if isinstance(instance, model_base.Model):
+            for field in instance.fields:
+                if isinstance(field, OneToOneField):
+                    query = "SELECT {} FROM {} ".format(
+                        field.column_name, instance.table_name.lower()
+                    )
+                    execute_query.execute(query)
+                    record = execute_query.fetchone()
+                    ids = getattr(record, field.column_name)
+                    return ids
 
     def __set__(self, instance, value):
-        if value is None:
-            return None
-        if self.check_value_type(value):
+        if isinstance(value, model_base.Model):
+            self.ids = self.get_value_object(instance, value)
+        elif self.check_value_type(value):
             self.ids = value
-        else:
-            raise ValueError("value must be number type")
