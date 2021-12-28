@@ -96,6 +96,11 @@ class Model(metaclass=ModelBase):
         if ids:
             self._update()
         else:
+            for field in self.fields:
+                # if instance calling save
+                if field.value is not None:
+                    self.attrs[field.column_name] = field.value
+
             table_name = self.table_name
             col_string = ", ".join(attrs.keys())
             param_string = ", ".join("%s" for _ in range(len(attrs.keys())))
@@ -107,7 +112,6 @@ class Model(metaclass=ModelBase):
                     values.append(v.id)
                 else:
                     values.append(v)
-
             self.query.execute(query, tuple(values))
 
     def _update(self):
