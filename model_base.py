@@ -34,18 +34,16 @@ class ModelBase(type):
             if isinstance(val, Field):
                 model_fields.append(val)
                 setattr(val, "column_name", key)
-
         new_attrs["connection"] = connection
         new_attrs["table_name"] = table_name
         new_attrs["fields"] = model_fields
-
         new_class = super().__new__(cls, name, bases, new_attrs)
 
         return new_class
 
 
 class Model(metaclass=ModelBase):
-    def __init__(self, rel_class=None, **kwargs):
+    def __init__(self, **kwargs):
 
         self.attrs = kwargs
         self.query = ConnectDB._get_cursor()
@@ -62,7 +60,6 @@ class Model(metaclass=ModelBase):
     def find_rel_field(self):
 
         new_obj = []
-
         for field in self.fields:
             if isinstance(field, OneToOneField):
                 new_obj.append(field)
@@ -85,10 +82,10 @@ class Model(metaclass=ModelBase):
         connection = cls.connection
         cursor = connection.cursor()
         cursor.execute(query)
+        cursor.close()
 
     def save(self, commit: bool = True):
         """save current instance to table"""
-
         attrs = self.attrs
 
         ids = attrs.get("id", None)
@@ -97,6 +94,7 @@ class Model(metaclass=ModelBase):
             self._update()
         else:
             for field in self.fields:
+
                 # if instance calling save
                 if field.value is not None:
                     self.attrs[field.column_name] = field.value
@@ -113,8 +111,9 @@ class Model(metaclass=ModelBase):
                 else:
                     values.append(v)
             self.query.execute(query, tuple(values))
+            self.query.close()
 
-    def _update(self):
+    def _update(self, commit: bool = True):
         """Updates current instance"""
         attrs = self.attrs
         ids = attrs.get("id", None)
@@ -137,11 +136,5 @@ class Model(metaclass=ModelBase):
 
         for field in cls.fields:
             new_attrs[field.column_name] = getattr(record, field.column_name)
-
-            if isinstance(field, OneToOneField):
-
-                new_attrs[field.column_name] = OneToOneField(
-                    field.to_class
-                ).get_rel_class_id()
 
         return cls(**new_attrs)

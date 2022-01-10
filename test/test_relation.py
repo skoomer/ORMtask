@@ -17,6 +17,10 @@ class MyUser(Model):
     profile_id = OneToOneField(Profile)
 
 
+class Avatar(Model):
+    id = AutoIncrementIDField()
+
+
 class Test_OneToOne(TestCase):
     def setUp(self):
         Profile().create_table()
@@ -55,19 +59,32 @@ class Test_OneToOne(TestCase):
         self.assertEqual(desc.get_rel_class_id(), None)
 
     def test_get_rel_class_id(self):
-        Profile(entity=5).save()
-        MyUser(profile_id=1).save()
-        desc = OneToOneField(Profile, ids=1).get_rel_class_id()
-        self.assertEqual(desc.id, 1)
+        profile = Profile()
+        profile.id = 1
+        user = MyUser()
+        user.profile_id = profile
+        self.assertEqual(user.profile_id, 1)
+
+    def test_get_rel_class(self):
+        profile = Profile()
+        user = MyUser()
+        user.profile_id = profile
+        self.assertEqual(user.profile_id, profile)
+
+    def test_get_rel_class_raises(self):
+        avatar = Avatar()
+        with pytest.raises(ValueError) as er:
+            self.user.profile_id = avatar
+        self.assertEqual(str(er.value), "value its not specific class")
 
     def test_set_(self):
         with pytest.raises(ValueError) as er:
             self.user.profile_id = "test"
-        self.assertEqual(str(er.value), "value must be number type")
+        self.assertEqual(str(er.value), "value must be int or class object")
         with pytest.raises(ValueError) as er:
             self.user.profile_id = 1.2
-        self.assertEqual(str(er.value), "value must be number type")
+        self.assertEqual(str(er.value), "value must be int or class object")
 
     def tearDown(self):
-        drop = "DROP TABLE IF EXISTS profile CASCADE;"
+        drop = "DROP TABLE IF EXISTS myuser, profile CASCADE;"
         self.cursor.execute(drop)

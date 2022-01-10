@@ -145,7 +145,12 @@ class AutoIncrementIDField(IntegerField):
 
 class OneToOneField(Field):
     def __init__(
-        self, to_class, ids=None, sql_type: Optional[str] = "INTEGER", **kwargs
+        self,
+        to_class,
+        value=None,
+        ids=None,
+        sql_type: Optional[str] = "INTEGER",
+        **kwargs,
     ):
         super().__init__(**kwargs)
         if isinstance(to_class, model_base.ModelBase):
@@ -160,32 +165,38 @@ class OneToOneField(Field):
             self.ids = ids
 
         self.ids = ids
+        self.value = value
         self.sql_type = sql_type
 
     def get_rel_class_id(self):
+
         new_obj = []
         execute_query = ConnectDB.connection.cursor(
             cursor_factory=psycopg2.extras.NamedTupleCursor
         )
+        if self.checkTableExists() is True:
 
-        if self.to_class and self.ids is not None:
-            query = "SELECT * FROM {} WHERE id = {} ".format(
-                self.to_class.table_name, self.ids
-            )
-            new_attrs = {}
-            execute_query.execute(query)
-            record = execute_query.fetchone()
+            if isinstance(self.value, int) and self.value is not None:
+                query = "SELECT * FROM {} WHERE id = {} ".format(
+                    self.to_class.table_name, self.value
+                )
+                new_attrs = {}
+                execute_query.execute(query)
+                record = execute_query.fetchone()
 
-            for field in self.to_class.fields:
-                new_attrs[field.column_name] = getattr(record, field.column_name)
+                for field in self.to_class.fields:
+                    if record is None:
+                        return self.value
+                    else:
+                        new_attrs[field.column_name] = getattr(
+                            record, field.column_name
+                        )
 
-            new_obj.append(self.to_class(**new_attrs))
+                new_obj.append(self.to_class(**new_attrs))
 
-            return new_obj.pop()
-
-    def __get__(self, instance, owner):
-
-        return self.get_rel_class_id()
+                return new_obj.pop()
+            else:
+                return self.value
 
     def to_sql(self):
         sql = "INTEGER NOT NULL \nREFERENCES {0.to_class.table_name} "
@@ -205,22 +216,38 @@ class OneToOneField(Field):
             raise ValueError("value must be int or class object")
 
     def get_value_object(self, instance, value):
+        if self.to_class.table_name == value.table_name:
+            if value.id is None:
+                return value
+            else:
+                return value.id
+        else:
+            raise ValueError("value its not specific class")
+
+    def checkTableExists(self):
         execute_query = ConnectDB.connection.cursor(
             cursor_factory=psycopg2.extras.NamedTupleCursor
         )
-        if isinstance(instance, model_base.Model):
-            for field in instance.fields:
-                if isinstance(field, OneToOneField):
-                    query = "SELECT {} FROM {} ".format(
-                        field.column_name, instance.table_name.lower()
-                    )
-                    execute_query.execute(query)
-                    record = execute_query.fetchone()
-                    ids = getattr(record, field.column_name)
-                    return ids
+        execute_query.execute(
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = '{}'".format(
+                self.to_class.table_name.lower()
+            )
+        )
+        record = execute_query.fetchone()[0]
+
+        if record == 1:
+            execute_query.close()
+            return True
+
+        execute_query.close()
+        return False
+
+    def __get__(self, instance, value):
+        return self.get_rel_class_id()
 
     def __set__(self, instance, value):
         if isinstance(value, model_base.Model):
-            self.ids = self.get_value_object(instance, value)
+            self.value = self.get_value_object(instance, value)
+
         elif self.check_value_type(value):
-            self.ids = value
+            self.value = value

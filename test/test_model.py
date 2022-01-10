@@ -43,11 +43,10 @@ class TestModel(TestCase):
 
     def test_model_save_instance(self):
         Book(entity=4).save()
-        Book(entity=4).save()
         query = "SELECT count(*) FROM book;"
         self.cursor.execute(query)
         for row in self.cursor:
-            self.assertEqual(row, (2,))
+            self.assertEqual(row, (1,))
 
     def test_get_object(self):
         Book(entity=4).save()
@@ -59,7 +58,7 @@ class TestModel(TestCase):
         Author().create_table()
         Book(entity=4).save()
         Author(book_id=1).save()
-        author = Author(book_id=1)
+        author = Author()
         author.get(ids=1)
         author.book_id = 1
         self.assertEqual(author.book_id.id, 1)
