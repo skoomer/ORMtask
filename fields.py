@@ -215,7 +215,7 @@ class OneToOneField(Field):
         else:
             raise ValueError("value must be int or class object")
 
-    def get_value_object(self, instance, value):
+    def set_value_object(self, instance, value):
         if self.to_class.table_name == value.table_name:
             if value.id is None:
                 return value
@@ -247,7 +247,7 @@ class OneToOneField(Field):
 
     def __set__(self, instance, value):
         if isinstance(value, model_base.Model):
-            self.value = self.get_value_object(instance, value)
+            self.value = self.set_value_object(instance, value)
 
         elif self.check_value_type(value):
             self.value = value

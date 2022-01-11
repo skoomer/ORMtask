@@ -12,18 +12,20 @@ class Profile(Model):
     entity = IntegerField()
 
 
+class Avatar(Model):
+    id = AutoIncrementIDField()
+
+
 class MyUser(Model):
     id = AutoIncrementIDField()
     profile_id = OneToOneField(Profile)
-
-
-class Avatar(Model):
-    id = AutoIncrementIDField()
+    avatar = OneToOneField(Avatar)
 
 
 class Test_OneToOne(TestCase):
     def setUp(self):
         Profile().create_table()
+        Avatar().create_table()
         MyUser().create_table()
         self.cursor = ConnectDB._get_cursor()
         self.user = MyUser()
@@ -65,13 +67,17 @@ class Test_OneToOne(TestCase):
         user.profile_id = profile
         self.assertEqual(user.profile_id, 1)
 
-    def test_get_rel_class(self):
+    def test_SET_value_object(self):
         profile = Profile()
         user = MyUser()
         user.profile_id = profile
         self.assertEqual(user.profile_id, profile)
 
-    def test_get_rel_class_raises(self):
+    def test_set_value_object_if_NONE(self):
+        user = MyUser()
+        self.assertEqual(user.avatar, None)
+
+    def test_set_value_object_raises(self):
         avatar = Avatar()
         with pytest.raises(ValueError) as er:
             self.user.profile_id = avatar
