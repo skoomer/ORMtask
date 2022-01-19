@@ -1,7 +1,7 @@
 import logging
 import psycopg2
 import psycopg2.extras
-from fields import Field, AutoIncrementIDField, OneToOneField
+from fields import Field, AutoIncrementIDField, OneToOneField, IntegerField
 from connect_db import ConnectDB
 
 log = logging.getLogger(__name__)
@@ -24,22 +24,33 @@ class ModelBase(type):
         table_name = name
         model_fields = []
         new_attrs = {}
+        object_id = {}
 
         if attrs.get("id") is None:
             new_attrs["id"] = AutoIncrementIDField()
 
-        for key, value in attrs.items():
-            new_attrs[key] = value
+        for keys, value in attrs.items():
+            new_attrs[keys] = value
 
         for key, val in new_attrs.items():
             if isinstance(val, Field):
                 model_fields.append(val)
                 setattr(val, "column_name", key)
+
         new_attrs["connection"] = connection
         new_attrs["table_name"] = table_name
         new_attrs["fields"] = model_fields
-        new_class = super().__new__(cls, name, bases, new_attrs)
 
+        for key, value in new_attrs.items():
+            if isinstance(value, OneToOneField):
+                object_id[key + "_id"] = IntegerField()
+
+        for key, val in object_id.items():
+            model_fields.append(val)
+            new_attrs[key] = val
+            setattr(val, "column_name", key)
+
+        new_class = super().__new__(cls, name, bases, new_attrs)
         return new_class
 
 
