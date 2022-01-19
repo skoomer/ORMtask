@@ -1,7 +1,7 @@
 from unittest.case import TestCase
 import pytest
 from model_base import Model, ModelBase
-from fields import IntegerField, OneToOneField, AutoIncrementIDField
+from fields import OneToOneField, AutoIncrementIDField
 from connect_db import ConnectDB
 
 ConnectDB.set_connection()
@@ -9,7 +9,6 @@ ConnectDB.set_connection()
 
 class Profile(Model):
     id = AutoIncrementIDField()
-    entity = IntegerField()
 
 
 class Avatar(Model):
@@ -18,7 +17,7 @@ class Avatar(Model):
 
 class MyUser(Model):
     id = AutoIncrementIDField()
-    profile_id = OneToOneField(Profile)
+    profile = OneToOneField(Profile)
     avatar = OneToOneField(Avatar)
 
 
@@ -28,11 +27,12 @@ class Test_OneToOne(TestCase):
         Avatar().create_table()
         MyUser().create_table()
         self.cursor = ConnectDB._get_cursor()
+        self.profile = Profile()
         self.user = MyUser()
 
     def test_check_exists_relation(self):
         query = "SELECT TRUE AS EXISTS \
-          FROM information_schema.columns WHERE table_name='user' and column_name= 'profile_id';"
+          FROM information_schema.columns WHERE table_name='user' and column_name= 'profile';"
         self.cursor.execute(query)
         for row in self.cursor:
             self.assertEqual(row, (True,))
@@ -49,47 +49,41 @@ class Test_OneToOne(TestCase):
 
     def test_field_column_name(self):
         for column in self.user.fields:
-            if column.column_name == "profile_id":
-                self.assertEqual(column.column_name, "profile_id")
+            if column.column_name == "profile":
+                self.assertEqual(column.column_name, "profile")
 
     def test_check_column_none(self):
         desc = OneToOneField(Profile)
         self.assertEqual(desc.ids, None)
 
-    def test_get_rel_class_id_is_none(self):
+    def test_get_rel_object_is_none(self):
         desc = OneToOneField(Profile)
-        self.assertEqual(desc.get_rel_class_id(), None)
-
-    def test_get_rel_class_id(self):
-        profile = Profile()
-        profile.id = 1
-        user = MyUser()
-        user.profile_id = profile
-        self.assertEqual(user.profile_id, 1)
+        self.assertEqual(desc.get_rel_object(), None)
 
     def test_SET_value_object(self):
         profile = Profile()
         user = MyUser()
-        user.profile_id = profile
-        self.assertEqual(user.profile_id, profile)
+        user.profile = profile
+        self.assertEqual(user.profile, profile)
+
+    def test_else_set_return_object(self):
+        self.profile.id = 1
+        self.profile.save()
+        self.assertEqual(self.user.profile.id, self.profile.id)
 
     def test_set_value_object_if_NONE(self):
-        user = MyUser()
-        self.assertEqual(user.avatar, None)
+        self.assertEqual(self.user.avatar, None)
 
     def test_set_value_object_raises(self):
         avatar = Avatar()
         with pytest.raises(ValueError) as er:
-            self.user.profile_id = avatar
+            self.user.profile = avatar
         self.assertEqual(str(er.value), "value its not specific class")
 
     def test_set_(self):
         with pytest.raises(ValueError) as er:
-            self.user.profile_id = "test"
-        self.assertEqual(str(er.value), "value must be int or class object")
-        with pytest.raises(ValueError) as er:
-            self.user.profile_id = 1.2
-        self.assertEqual(str(er.value), "value must be int or class object")
+            self.user.profile = "test"
+        self.assertEqual(str(er.value), "value must be class object")
 
     def tearDown(self):
         drop = "DROP TABLE IF EXISTS myuser, profile CASCADE;"

@@ -15,3 +15,4 @@ htmlcov/
 test/__pycache__
 today.txt
 create_table.py
+views.py

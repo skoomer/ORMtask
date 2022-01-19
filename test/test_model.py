@@ -2,7 +2,6 @@ from unittest.case import TestCase
 from model_base import Model
 from fields import IntegerField, AutoIncrementIDField, OneToOneField
 from connect_db import ConnectDB
-
 ConnectDB.set_connection()
 
 
@@ -13,7 +12,7 @@ class Book(Model):
 
 class Author(Model):
     id = AutoIncrementIDField()
-    book_id = OneToOneField(Book)
+    book = OneToOneField(Book)
 
 
 class TestModel(TestCase):
@@ -53,15 +52,6 @@ class TestModel(TestCase):
         book = Book()
         book.get(ids=1)
         self.assertEqual(book.id, 1)
-
-    def test_get_object_relation(self):
-        Author().create_table()
-        Book(entity=4).save()
-        Author(book_id=1).save()
-        author = Author()
-        author.get(ids=1)
-        author.book_id = 1
-        self.assertEqual(author.book_id.id, 1)
 
     def test_update_instance(self):
         Book(entity=1, id=1)._update()

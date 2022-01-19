@@ -1,5 +1,6 @@
 import logging
 import psycopg2
+import psycopg2.extras
 from fields import Field, AutoIncrementIDField, OneToOneField
 from connect_db import ConnectDB
 
@@ -58,7 +59,6 @@ class Model(metaclass=ModelBase):
             setattr(self, key, val)
 
     def find_rel_field(self):
-
         new_obj = []
         for field in self.fields:
             if isinstance(field, OneToOneField):

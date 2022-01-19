@@ -168,7 +168,7 @@ class OneToOneField(Field):
         self.value = value
         self.sql_type = sql_type
 
-    def get_rel_class_id(self):
+    def get_rel_object(self):
 
         new_obj = []
         execute_query = ConnectDB.connection.cursor(
@@ -176,27 +176,22 @@ class OneToOneField(Field):
         )
         if self.checkTableExists() is True:
 
-            if isinstance(self.value, int) and self.value is not None:
+            if self.to_class and self.ids is not None:
                 query = "SELECT * FROM {} WHERE id = {} ".format(
-                    self.to_class.table_name, self.value
+                    self.to_class.table_name, self.ids
                 )
                 new_attrs = {}
                 execute_query.execute(query)
                 record = execute_query.fetchone()
 
                 for field in self.to_class.fields:
-                    if record is None:
-                        return self.value
-                    else:
-                        new_attrs[field.column_name] = getattr(
-                            record, field.column_name
-                        )
+                    new_attrs[field.column_name] = getattr(record, field.column_name)
 
                 new_obj.append(self.to_class(**new_attrs))
 
                 return new_obj.pop()
             else:
-                return self.value
+                return None
 
     def to_sql(self):
         sql = "INTEGER NOT NULL \nREFERENCES {0.to_class.table_name} "
@@ -205,24 +200,6 @@ class OneToOneField(Field):
 
     def is_real_type(self):
         return False
-
-    def check_value_type(self, value):
-
-        if isinstance(value, float):
-            raise ValueError("value must be int or class object")
-        if isinstance(value, int) or value.isdigit():
-            return True
-        else:
-            raise ValueError("value must be int or class object")
-
-    def set_value_object(self, instance, value):
-        if self.to_class.table_name == value.table_name:
-            if value.id is None:
-                return value
-            else:
-                return value.id
-        else:
-            raise ValueError("value its not specific class")
 
     def checkTableExists(self):
         execute_query = ConnectDB.connection.cursor(
@@ -242,12 +219,23 @@ class OneToOneField(Field):
         execute_query.close()
         return False
 
+    def set_value_object(self, instance, value):
+        if self.to_class.table_name == value.table_name:
+            return value
+        else:
+            raise ValueError("value its not specific class")
+
+    def check_exists_object_value(self):
+        if self.value is not None:
+            return self.value
+        else:
+            return self.get_rel_object()
+
     def __get__(self, instance, value):
-        return self.get_rel_class_id()
+        return self.check_exists_object_value()
 
     def __set__(self, instance, value):
         if isinstance(value, model_base.Model):
             self.value = self.set_value_object(instance, value)
-
-        elif self.check_value_type(value):
-            self.value = value
+        else:
+            raise ValueError("value must be class object")
