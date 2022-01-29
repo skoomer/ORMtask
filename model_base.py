@@ -1,5 +1,7 @@
 import logging
-from fields import Field
+import psycopg2
+import psycopg2.extras
+from fields import Field, AutoIncrementIDField, OneToOneField
 from connect_db import ConnectDB
 
 log = logging.getLogger(__name__)
@@ -23,6 +25,9 @@ class ModelBase(type):
         model_fields = []
         new_attrs = {}
 
+        if attrs.get("id") is None:
+            new_attrs["id"] = AutoIncrementIDField()
+
         for key, value in attrs.items():
             new_attrs[key] = value
 
@@ -40,14 +45,33 @@ class ModelBase(type):
 
 class Model(metaclass=ModelBase):
     def __init__(self, **kwargs):
+
         self.attrs = kwargs
         self.query = ConnectDB._get_cursor()
+
+        for key, value in self.attrs.items():
+            for column in self.find_rel_field():
+                if key == column.column_name:
+                    column.column = value
+
+        for key, val in kwargs.items():
+
+            setattr(self, key, val)
+
+    def find_rel_field(self):
+        new_obj = []
+        for field in self.fields:
+            if isinstance(field, OneToOneField):
+                new_obj.append(field)
+        return new_obj
 
     @classmethod
     def create_table(cls):
         """Creates the table for the model"""
         log.info(f"Creating table for Model '{cls.table_name}'")
+
         columns = [f"{field.column_name} {field.to_sql()}" for field in cls.fields]
+
         query = """
                 CREATE TABLE IF NOT EXISTS %s (
                     %s
@@ -58,14 +82,23 @@ class Model(metaclass=ModelBase):
         connection = cls.connection
         cursor = connection.cursor()
         cursor.execute(query)
+        cursor.close()
 
     def save(self, commit: bool = True):
         """save current instance to table"""
         attrs = self.attrs
+
         ids = attrs.get("id", None)
+
         if ids:
             self._update()
         else:
+            for field in self.fields:
+
+                # if instance calling save
+                if field.value is not None:
+                    self.attrs[field.column_name] = field.value
+
             table_name = self.table_name
             col_string = ", ".join(attrs.keys())
             param_string = ", ".join("%s" for _ in range(len(attrs.keys())))
@@ -77,10 +110,10 @@ class Model(metaclass=ModelBase):
                     values.append(v.id)
                 else:
                     values.append(v)
-
             self.query.execute(query, tuple(values))
+            self.query.close()
 
-    def _update(self):
+    def _update(self, commit: bool = True):
         """Updates current instance"""
         attrs = self.attrs
         ids = attrs.get("id", None)
@@ -90,4 +123,18 @@ class Model(metaclass=ModelBase):
             query = f"UPDATE {table_name} SET {new_values} WHERE id={ids};"
             self.query.execute(query, tuple(attrs.values()))
         else:
-            raise AttributeError('Instance no have ids for update')
+            raise AttributeError("Instance no have ids for update")
+
+    @classmethod
+    def get(cls, ids):
+        query = "SELECT * FROM {} WHERE id = {}".format(cls.table_name, ids)
+        connection = cls.connection
+        cursor = connection.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
+        cursor.execute(query)
+        new_attrs = {}
+        record = cursor.fetchone()
+
+        for field in cls.fields:
+            new_attrs[field.column_name] = getattr(record, field.column_name)
+
+        return cls(**new_attrs)
