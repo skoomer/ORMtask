@@ -12,6 +12,9 @@ class TestField(TestCase):
         desc = self._make_one_field()
         self.assertEqual(desc.set_null(False), 'NOT NULL')
         self.assertEqual(desc.set_null(True), 'NULL')
+        self.assertEqual(desc.is_real_type(), True)
+        desc.nullable = True
+        self.assertEqual(desc._get_null_val(), ' NULL')
 
     def test_class_desc_str(self):
         desc = self._make_one_field()

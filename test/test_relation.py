@@ -75,6 +75,17 @@ class Test_OneToOne(TestCase):
         user.profile = profile_db
         self.assertEqual(user.profile_id, profile_db.id)
 
+    def test_get_object_from_db(self):
+        profile = Profile()
+        profile.id = 1
+        profile.save()
+        profile_db = Profile.get(ids=1)
+        user = MyUser()
+        user.profile = profile_db
+        user.save()
+        user_db = MyUser.get(ids=1)
+        self.assertEqual(user_db.profile.id, profile_db.id)
+
     def test_set_value_object_raises(self):
         avatar = Avatar()
         with pytest.raises(ValueError) as er:

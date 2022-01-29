@@ -165,7 +165,7 @@ class OneToOneField(Field):
             self.ids = ids
 
         self.ids = ids
-        # self.value = value
+        self.value = value
         self.sql_type = sql_type
 
     def get_rel_object(self):
@@ -234,7 +234,7 @@ class OneToOneField(Field):
 
     def check_exists_object_value(self, instance, value):
         """return value object or (else) value from db"""
-        if self.value is not None:
+        if isinstance(self.value, model_base.Model):
             return self.value
         else:
             if hasattr(instance, self.to_class.table_name.lower() + "_id"):

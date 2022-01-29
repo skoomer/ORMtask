@@ -58,17 +58,10 @@ class Model(metaclass=ModelBase):
     def __init__(self, **kwargs):
         self.attrs = kwargs
         self.query = ConnectDB._get_cursor()
-
-        for key, value in self.attrs.items():
-
-            for column in self.fields:
-                if key == column.column_name:
-                    column.value = value
-            setattr(self, key, value)
-
         for key, val in kwargs.items():
-
-            setattr(self, key, val)
+            for field in self.fields:
+                if key == field.column_name:
+                    field.value = val
 
     def find_rel_field(self):
         new_obj = []

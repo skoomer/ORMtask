@@ -21,6 +21,10 @@ class TestModel(TestCase):
         Book().create_table()
         self.cursor = ConnectDB._get_cursor()
 
+    def test_find_relation_field(self):
+        author = Author()
+        self.assertEqual(type(author.find_rel_field()[0]), OneToOneField)
+
     def test_create_optional_attr_if_field_have_relation_field(self):
         author = Author()
         optional_field = hasattr(author, "book_id")
