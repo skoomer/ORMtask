@@ -56,14 +56,15 @@ class ModelBase(type):
 
 class Model(metaclass=ModelBase):
     def __init__(self, **kwargs):
-
         self.attrs = kwargs
         self.query = ConnectDB._get_cursor()
 
         for key, value in self.attrs.items():
-            for column in self.find_rel_field():
+
+            for column in self.fields:
                 if key == column.column_name:
-                    column.column = value
+                    column.value = value
+            setattr(self, key, value)
 
         for key, val in kwargs.items():
 
@@ -105,7 +106,6 @@ class Model(metaclass=ModelBase):
             self._update()
         else:
             for field in self.fields:
-
                 # if instance calling save
                 if field.value is not None:
                     self.attrs[field.column_name] = field.value
@@ -113,6 +113,7 @@ class Model(metaclass=ModelBase):
             table_name = self.table_name
             col_string = ", ".join(attrs.keys())
             param_string = ", ".join("%s" for _ in range(len(attrs.keys())))
+
             query = f"INSERT INTO {table_name} ({col_string}) VALUES({param_string}) RETURNING Id;"
             values = []
 
@@ -129,19 +130,29 @@ class Model(metaclass=ModelBase):
         attrs = self.attrs
         ids = attrs.get("id", None)
         if ids:
+            for field in self.fields:
+
+                if field.value is not None:
+
+                    self.attrs[field.column_name] = field.value
+
             table_name = self.table_name
             new_values = ", ".join([f"{key}=%s" for key in attrs.keys()])
             query = f"UPDATE {table_name} SET {new_values} WHERE id={ids};"
+
             self.query.execute(query, tuple(attrs.values()))
         else:
             raise AttributeError("Instance no have ids for update")
 
     @classmethod
     def get(cls, ids):
+        """Get the current object by ID from the db"""
+
         query = "SELECT * FROM {} WHERE id = {}".format(cls.table_name, ids)
         connection = cls.connection
         cursor = connection.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
         cursor.execute(query)
+
         new_attrs = {}
         record = cursor.fetchone()
 
