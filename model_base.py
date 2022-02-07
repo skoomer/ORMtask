@@ -153,3 +153,40 @@ class Model(metaclass=ModelBase):
             new_attrs[field.column_name] = getattr(record, field.column_name)
 
         return cls(**new_attrs)
+
+    @classmethod
+    def all(cls, chunk_size=2000):
+        """Get all instance"""
+        field_list = []
+
+        for field in cls.fields:
+            field_list.append(field.column_name)
+            col_string = ", ".join(field_list)
+
+        query = "SELECT {} FROM {}".format(col_string, cls.table_name)
+
+        connection = cls.connection
+        cursor = connection.cursor()
+        cursor.execute(query)
+
+        result = cursor.fetchmany(size=chunk_size)
+
+        model_objects = []
+        is_fetching_completed = False
+
+        while not is_fetching_completed:
+            for row_values in result:
+                keys, values = field_list, row_values
+
+                row_data = dict(zip(keys, values))
+
+                model_objects.append(cls(**row_data))
+            is_fetching_completed = len(result) < chunk_size
+
+        return model_objects
+
+    def __repr__(self):
+        attrs_format = ", ".join(
+            [f"{field}={value}" for field, value in self.__dict__.items()]
+        )
+        return f"<{self.__class__.__name__}: ({attrs_format})>"
