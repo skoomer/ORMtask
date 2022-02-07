@@ -253,7 +253,42 @@ class OneToOneField(Field):
 
             for field in instance.fields:
                 if field.column_name.endswith("_id"):
-                    if getattr(field, "column_name") == self.to_class.table_name.lower() + "_id":
+                    if (
+                        getattr(field, "column_name")
+                        == self.to_class.table_name.lower() + "_id"
+                    ):
                         field.value = value.id
         else:
             raise ValueError("value must be class object")
+
+
+class CharField(Field):
+    python = str
+
+    def __init__(self, max_length: int = None, value=None, **kwargs):
+        super().__init__(**kwargs)
+        self.max_length = max_length
+
+        self.value = value
+
+    def to_sql(self):
+        null = ""
+        unique = ""
+        pg_type = f"VARCHAR({self.max_length})"
+        if not self.nullable:
+            null = " NOT NULL"
+        if self.is_unique:
+            unique = " UNIQUE"
+        if not self.max_length:
+            pg_type = "TEXT"
+
+        return f"{pg_type}{unique}{null}"
+
+    def __get__(self, instance, value):
+        return self.value
+
+    def __set__(self, instance, value):
+        if isinstance(value, str):
+            self.value = value
+        else:
+            raise ValueError("Value must be string type")
