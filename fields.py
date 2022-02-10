@@ -169,22 +169,27 @@ class OneToOneField(Field):
         self.sql_type = sql_type
 
     def get_rel_object(self):
+        """return object from db"""
 
         new_obj = []
         execute_query = ConnectDB.connection.cursor(
             cursor_factory=psycopg2.extras.NamedTupleCursor
         )
+
         if self.checkTableExists() is True:
 
             if self.to_class and self.ids is not None:
                 query = "SELECT * FROM {} WHERE id = {} ".format(
                     self.to_class.table_name, self.ids
                 )
+
                 new_attrs = {}
+
                 execute_query.execute(query)
                 record = execute_query.fetchone()
 
                 for field in self.to_class.fields:
+
                     new_attrs[field.column_name] = getattr(record, field.column_name)
 
                 new_obj.append(self.to_class(**new_attrs))
@@ -220,22 +225,35 @@ class OneToOneField(Field):
         return False
 
     def set_value_object(self, instance, value):
+        """set value"""
         if self.to_class.table_name == value.table_name:
+
             return value
         else:
             raise ValueError("value its not specific class")
 
-    def check_exists_object_value(self):
-        if self.value is not None:
+    def check_exists_object_value(self, instance, value):
+        """return value object or (else) value from db"""
+        if isinstance(self.value, model_base.Model):
             return self.value
         else:
+            if hasattr(instance, self.to_class.table_name.lower() + "_id"):
+                self.ids = getattr(instance, self.to_class.table_name.lower() + "_id")
+
             return self.get_rel_object()
 
     def __get__(self, instance, value):
-        return self.check_exists_object_value()
+        """return object"""
+        return self.check_exists_object_value(instance, value)
 
     def __set__(self, instance, value):
+        """set value"""
         if isinstance(value, model_base.Model):
             self.value = self.set_value_object(instance, value)
+
+            for field in instance.fields:
+                if field.column_name.endswith("_id"):
+                    if getattr(field, "column_name") == self.to_class.table_name.lower() + "_id":
+                        field.value = value.id
         else:
             raise ValueError("value must be class object")

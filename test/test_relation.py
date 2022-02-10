@@ -2,6 +2,7 @@ from unittest.case import TestCase
 import pytest
 from model_base import Model, ModelBase
 from fields import OneToOneField, AutoIncrementIDField
+
 from connect_db import ConnectDB
 
 ConnectDB.set_connection()
@@ -18,7 +19,6 @@ class Avatar(Model):
 class MyUser(Model):
     id = AutoIncrementIDField()
     profile = OneToOneField(Profile)
-    avatar = OneToOneField(Avatar)
 
 
 class Test_OneToOne(TestCase):
@@ -60,19 +60,31 @@ class Test_OneToOne(TestCase):
         desc = OneToOneField(Profile)
         self.assertEqual(desc.get_rel_object(), None)
 
-    def test_SET_value_object(self):
+    def test_SET_value_object_if_type_model(self):
         profile = Profile()
         user = MyUser()
         user.profile = profile
         self.assertEqual(user.profile, profile)
 
-    def test_else_set_return_object(self):
-        self.profile.id = 1
-        self.profile.save()
-        self.assertEqual(self.user.profile.id, self.profile.id)
+    def test_optional_attr_set_value_id(self):
+        profile = Profile()
+        profile.id = 1
+        profile.save()
+        profile_db = Profile.get(ids=1)
+        user = MyUser()
+        user.profile = profile_db
+        self.assertEqual(user.profile_id, profile_db.id)
 
-    def test_set_value_object_if_NONE(self):
-        self.assertEqual(self.user.avatar, None)
+    def test_get_object_from_db(self):
+        profile = Profile()
+        profile.id = 1
+        profile.save()
+        profile_db = Profile.get(ids=1)
+        user = MyUser()
+        user.profile = profile_db
+        user.save()
+        user_db = MyUser.get(ids=1)
+        self.assertEqual(user_db.profile.id, profile_db.id)
 
     def test_set_value_object_raises(self):
         avatar = Avatar()

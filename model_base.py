@@ -1,7 +1,7 @@
 import logging
 import psycopg2
 import psycopg2.extras
-from fields import Field, AutoIncrementIDField, OneToOneField
+from fields import Field, AutoIncrementIDField, OneToOneField, IntegerField
 from connect_db import ConnectDB
 
 log = logging.getLogger(__name__)
@@ -24,39 +24,44 @@ class ModelBase(type):
         table_name = name
         model_fields = []
         new_attrs = {}
+        object_id = {}
 
         if attrs.get("id") is None:
             new_attrs["id"] = AutoIncrementIDField()
 
-        for key, value in attrs.items():
-            new_attrs[key] = value
+        for keys, value in attrs.items():
+            new_attrs[keys] = value
 
         for key, val in new_attrs.items():
             if isinstance(val, Field):
                 model_fields.append(val)
                 setattr(val, "column_name", key)
+
         new_attrs["connection"] = connection
         new_attrs["table_name"] = table_name
         new_attrs["fields"] = model_fields
-        new_class = super().__new__(cls, name, bases, new_attrs)
 
+        for key, value in new_attrs.items():
+            if isinstance(value, OneToOneField):
+                object_id[key + "_id"] = IntegerField()
+
+        for key, val in object_id.items():
+            model_fields.append(val)
+            new_attrs[key] = val
+            setattr(val, "column_name", key)
+
+        new_class = super().__new__(cls, name, bases, new_attrs)
         return new_class
 
 
 class Model(metaclass=ModelBase):
     def __init__(self, **kwargs):
-
         self.attrs = kwargs
         self.query = ConnectDB._get_cursor()
-
-        for key, value in self.attrs.items():
-            for column in self.find_rel_field():
-                if key == column.column_name:
-                    column.column = value
-
         for key, val in kwargs.items():
-
-            setattr(self, key, val)
+            for field in self.fields:
+                if key == field.column_name:
+                    field.value = val
 
     def find_rel_field(self):
         new_obj = []
@@ -94,7 +99,6 @@ class Model(metaclass=ModelBase):
             self._update()
         else:
             for field in self.fields:
-
                 # if instance calling save
                 if field.value is not None:
                     self.attrs[field.column_name] = field.value
@@ -102,6 +106,7 @@ class Model(metaclass=ModelBase):
             table_name = self.table_name
             col_string = ", ".join(attrs.keys())
             param_string = ", ".join("%s" for _ in range(len(attrs.keys())))
+
             query = f"INSERT INTO {table_name} ({col_string}) VALUES({param_string}) RETURNING Id;"
             values = []
 
@@ -118,19 +123,29 @@ class Model(metaclass=ModelBase):
         attrs = self.attrs
         ids = attrs.get("id", None)
         if ids:
+            for field in self.fields:
+
+                if field.value is not None:
+
+                    self.attrs[field.column_name] = field.value
+
             table_name = self.table_name
             new_values = ", ".join([f"{key}=%s" for key in attrs.keys()])
             query = f"UPDATE {table_name} SET {new_values} WHERE id={ids};"
+
             self.query.execute(query, tuple(attrs.values()))
         else:
             raise AttributeError("Instance no have ids for update")
 
     @classmethod
     def get(cls, ids):
+        """Get the current object by ID from the db"""
+
         query = "SELECT * FROM {} WHERE id = {}".format(cls.table_name, ids)
         connection = cls.connection
         cursor = connection.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
         cursor.execute(query)
+
         new_attrs = {}
         record = cursor.fetchone()
 
@@ -138,3 +153,40 @@ class Model(metaclass=ModelBase):
             new_attrs[field.column_name] = getattr(record, field.column_name)
 
         return cls(**new_attrs)
+
+    @classmethod
+    def all(cls, chunk_size=2000):
+        """Get all instance"""
+        field_list = []
+
+        for field in cls.fields:
+            field_list.append(field.column_name)
+            col_string = ", ".join(field_list)
+
+        query = "SELECT {} FROM {}".format(col_string, cls.table_name)
+
+        connection = cls.connection
+        cursor = connection.cursor()
+        cursor.execute(query)
+
+        result = cursor.fetchmany(size=chunk_size)
+
+        model_objects = []
+        is_fetching_completed = False
+
+        while not is_fetching_completed:
+            for row_values in result:
+                keys, values = field_list, row_values
+
+                row_data = dict(zip(keys, values))
+
+                model_objects.append(cls(**row_data))
+            is_fetching_completed = len(result) < chunk_size
+
+        return model_objects
+
+    def __repr__(self):
+        attrs_format = ", ".join(
+            [f"{field}={value}" for field, value in self.__dict__.items()]
+        )
+        return f"<{self.__class__.__name__}: ({attrs_format})>"

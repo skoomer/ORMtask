@@ -2,6 +2,7 @@ from unittest.case import TestCase
 from model_base import Model
 from fields import IntegerField, AutoIncrementIDField, OneToOneField
 from connect_db import ConnectDB
+
 ConnectDB.set_connection()
 
 
@@ -19,6 +20,20 @@ class TestModel(TestCase):
     def setUp(self):
         Book().create_table()
         self.cursor = ConnectDB._get_cursor()
+
+    def test_find_relation_field(self):
+        author = Author()
+        self.assertEqual(type(author.find_rel_field()[0]), OneToOneField)
+
+    def test_create_optional_attr_if_field_have_relation_field(self):
+        author = Author()
+        optional_field = hasattr(author, "book_id")
+        self.assertEqual(optional_field, True)
+
+    def test_create_optional_attr_if_field_no_relation_field(self):
+        author = Author()
+        optional_field = hasattr(author, "avatar_id")
+        self.assertEqual(optional_field, False)
 
     def test_check_exist_table(self):
         query = "SELECT EXISTS ( SELECT * FROM information_schema.tables WHERE table_name = 'book');"
